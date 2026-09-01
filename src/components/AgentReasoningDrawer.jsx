@@ -84,13 +84,28 @@ export default function AgentReasoningDrawer({ hazard, onClose }) {
 {JSON.stringify({
   agent_id: "SiteRiskAgent-Alpha",
   hazard_id: hazard.id,
-  likelihood: hazard.likelihood,
-  severity_rating: hazard.severityRating || 4,
-  exposure_index: hazard.exposure || 4,
-  environmental_multiplier: 1.15,
-  calculated_score: hazard.riskScore,
-  osha_matched_standard: "OSHA 1926 Subpart P",
-  confidence_rating: 0.946
+  yolo_vision_detection: {
+    class: hazard.yoloDetection?.class || "hazard_object",
+    confidence_score: hazard.yoloDetection?.confidence || 0.92,
+    bounding_box_coords: hazard.yoloDetection?.boundingBox || [120, 45, 210, 180],
+    zone: hazard.zoneId || "ZONE-A"
+  },
+  multi_frame_confirmation: {
+    consecutive_frames_detected: hazard.multiFrameConfirmation?.consecutiveFramesDetected || 4,
+    required_threshold: 3,
+    false_positive_filtered: true
+  },
+  risk_scoring_engine: {
+    likelihood_P: hazard.likelihood,
+    severity_I: hazard.severityRating || 4,
+    exposure_E: hazard.exposure || 4,
+    historical_freq_H: hazard.historicalFreq || 3,
+    weighted_formula: "0.40*P + 0.30*S + 0.20*E + 0.10*H",
+    multiplicative_formula: "(P x I x E) x EnvMultiplier",
+    final_score: hazard.riskScore
+  },
+  regulatory_standard: "OSHA 1926 Subpart P & Subpart L",
+  telemetry_type: "Simulated Vision & IoT Feed (Week 1 Prototype)"
 }, null, 2)}
             </pre>
           </div>

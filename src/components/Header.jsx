@@ -12,12 +12,15 @@ export default function Header({ selectedProject, setSelectedProject, projects, 
             <ShieldAlert className="h-6 w-6" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-slate-400">
                 BuildSure <span className="text-cyan-400">AI</span>
               </h1>
               <span className="px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
                 Agent Network
+              </span>
+              <span className="px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                Simulated Telemetry (Week 1 Prototype)
               </span>
             </div>
             <p className="text-xs text-slate-400 font-medium">
@@ -38,7 +41,7 @@ export default function Header({ selectedProject, setSelectedProject, projects, 
           <span className="text-slate-600">|</span>
           <div className="flex items-center gap-1.5 text-cyan-400 font-mono">
             <Cpu className="h-3.5 w-3.5" />
-            <span>Milestone 1: Site Risk Monitoring</span>
+            <span>YOLO Vision & Telemetry Feed (Simulated)</span>
           </div>
         </div>
 
