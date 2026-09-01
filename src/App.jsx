@@ -7,6 +7,12 @@ import HazardDetectionPanel from './components/HazardDetectionPanel';
 import RiskAnalyticsCharts from './components/RiskAnalyticsCharts';
 import SimulatorControls from './components/SimulatorControls';
 import AgentReasoningDrawer from './components/AgentReasoningDrawer';
+
+// Milestone 2 Components
+import PPEDetectionPage from './components/PPEDetectionPage';
+import SafetyDashboardPage from './components/SafetyDashboardPage';
+import SafetyAlertsPage from './components/SafetyAlertsPage';
+
 import { MOCK_PROJECTS, MOCK_SITE_ZONES, MOCK_HAZARDS } from './data/mockSiteData';
 import { siteRiskAgent } from './agents/SiteRiskAgent';
 import { ShieldAlert, AlertCircle, Info, Sparkles, Terminal } from 'lucide-react';
@@ -18,6 +24,9 @@ export default function App() {
   const [hazards, setHazards] = useState([]);
   const [selectedHazardForTrace, setSelectedHazardForTrace] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
+
+  // Active Tab State: SITE_RISK (M1), PPE_DETECTION (M2), SAFETY_DASHBOARD (M2), SAFETY_ALERTS (M2)
+  const [activeTab, setActiveTab] = useState('SITE_RISK');
 
   // Initialize and evaluate hazards with Site Risk Agent on mount or project change
   useEffect(() => {
@@ -68,16 +77,18 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       
-      {/* Top Bar Header */}
+      {/* Top Bar Header with Navigation Tabs */}
       <Header
         selectedProject={selectedProject}
         setSelectedProject={setSelectedProject}
         projects={projects}
         hazardsCount={hazards.length}
         onRefresh={handleRefreshPipeline}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
       />
 
-      {/* Main Container */}
+      {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6">
         
         {/* Toast Notification Banner */}
@@ -87,48 +98,68 @@ export default function App() {
               <Sparkles className="h-4 w-4 text-cyan-400 shrink-0" />
               <span>{toastMessage}</span>
             </div>
-            <span className="text-[10px] font-mono opacity-75">SiteRiskAgent Alert</span>
+            <span className="text-[10px] font-mono opacity-75">BuildSure AI System Alert</span>
           </div>
         )}
 
-        {/* Live Simulator Trigger Bar */}
-        <SimulatorControls
-          onTriggerEvent={handleTriggerSimulatedEvent}
-          onReset={handleResetFeed}
-        />
+        {/* Tab 1: Milestone 1 — Site Risk Command Center (Preserved 100%) */}
+        {activeTab === 'SITE_RISK' && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            {/* Live Simulator Trigger Bar */}
+            <SimulatorControls
+              onTriggerEvent={handleTriggerSimulatedEvent}
+              onReset={handleResetFeed}
+            />
 
-        {/* Top Key Metrics Overview */}
-        <MetricsOverview
-          project={selectedProject}
-          hazards={hazards}
-          zones={zones}
-        />
+            {/* Top Key Metrics Overview */}
+            <MetricsOverview
+              project={selectedProject}
+              hazards={hazards}
+              zones={zones}
+            />
 
-        {/* Interactive Spatial Site Map Grid */}
-        <SiteMapGrid
-          zones={zones}
-          onSelectZone={(zone) => {
-            showToast(`Inspecting ${zone.name}. Active Risk Score: ${zone.riskScore}`);
-          }}
-        />
+            {/* Interactive Spatial Site Map Grid */}
+            <SiteMapGrid
+              zones={zones}
+              onSelectZone={(zone) => {
+                showToast(`Inspecting ${zone.name}. Active Risk Score: ${zone.riskScore}`);
+              }}
+            />
 
-        {/* 5x5 Probability vs Impact Risk Heatmap Matrix */}
-        <RiskHeatmapMatrix
-          hazards={hazards}
-        />
+            {/* 5x5 Probability vs Impact Risk Heatmap Matrix */}
+            <RiskHeatmapMatrix
+              hazards={hazards}
+            />
 
-        {/* Live Hazard Detection & AI Recommendation Cards */}
-        <HazardDetectionPanel
-          hazards={hazards}
-          onInspectReasoning={(hazard) => setSelectedHazardForTrace(hazard)}
-        />
+            {/* Live Hazard Detection & AI Recommendation Cards */}
+            <HazardDetectionPanel
+              hazards={hazards}
+              onInspectReasoning={(hazard) => setSelectedHazardForTrace(hazard)}
+            />
 
-        {/* Risk Distribution & Historical Trend Charts */}
-        <RiskAnalyticsCharts />
+            {/* Risk Distribution & Historical Trend Charts */}
+            <RiskAnalyticsCharts />
+          </div>
+        )}
+
+        {/* Tab 2: Milestone 2 — PPE Safety Detection */}
+        {activeTab === 'PPE_DETECTION' && (
+          <PPEDetectionPage selectedProject={selectedProject} />
+        )}
+
+        {/* Tab 3: Milestone 2 — Safety Intelligence Dashboard */}
+        {activeTab === 'SAFETY_DASHBOARD' && (
+          <SafetyDashboardPage selectedProject={selectedProject} />
+        )}
+
+        {/* Tab 4: Milestone 2 — Safety Alerts & Audit History */}
+        {activeTab === 'SAFETY_ALERTS' && (
+          <SafetyAlertsPage selectedProject={selectedProject} />
+        )}
 
       </main>
 
-      {/* Slide-out Agent XAI Decision Trace Drawer */}
+      {/* Slide-out Agent XAI Decision Trace Drawer (Milestone 1) */}
       <AgentReasoningDrawer
         hazard={selectedHazardForTrace}
         onClose={() => setSelectedHazardForTrace(null)}
@@ -138,7 +169,7 @@ export default function App() {
       <footer className="border-t border-slate-800/80 py-4 px-4 lg:px-8 text-center text-xs text-slate-500 bg-slate-950">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>BuildSure AI — Agentic Construction Risk Intelligence Platform</span>
-          <span className="font-mono text-[11px]">Infosys Springboard Internship • Milestone 1 (Week 1–2 Release)</span>
+          <span className="font-mono text-[11px]">Infosys Springboard Internship • Milestone 1 & 2 Release</span>
         </div>
       </footer>
 
