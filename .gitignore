@@ -4,6 +4,27 @@ node_modules/
 # Production build
 dist/
 
+# Python & Virtual Environments
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Environment variables & secrets
+.env
+!.env.example
+
+# SQLite Database & Model Weights
+*.db
+*.sqlite3
+*.pt
+
+# Uploads and temporary inference results
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/results/*
+!backend/results/.gitkeep
+
 # Logs
 *.log
 npm-debug.log*

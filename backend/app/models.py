@@ -67,7 +67,12 @@ class SafetyAlert(Base):
     message = Column(Text, nullable=False)
     status = Column(String(20), default="OPEN") # OPEN, ACKNOWLEDGED, RESOLVED
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    automation_status = Column(String(50), default="Not Configured")
+    automation_status = Column(String(50), default="Not Configured") # Not Configured, Not Required, Logged, Supervisor Notified, Urgent Review Required, Failed
+    automation_attempted_at = Column(DateTime, nullable=True)
+    automation_response_code = Column(Integer, nullable=True)
+    automation_response_message = Column(Text, nullable=True)
+    automation_last_error = Column(Text, nullable=True)
+    delivery_channel = Column(String(50), nullable=True, default="None") # Email, Slack, Teams, None
 
     violation = relationship("PPEViolation", back_populates="alerts")
     audit_logs = relationship("SafetyAuditLog", back_populates="alert", cascade="all, delete-orphan")

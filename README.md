@@ -61,6 +61,7 @@ Construction sites are high-risk, dynamic environments where traditional manual 
 4. **Interactive PPE Detection Page (`PPEDetectionPage.jsx`)**: Upload site photos, select work zones, view side-by-side YOLO annotated results.
 5. **Safety Intelligence Dashboard (`SafetyDashboardPage.jsx`)**: Live KPI metrics, PPE compliance rates, distribution charts, stored database records.
 6. **Safety Alerts & Audit History (`SafetyAlertsPage.jsx`)**: Supervisor alert acknowledge & resolve workflows with audit logs.
+7. **n8n Workflow Automation Integration (`n8n_dispatcher.py`)**: Asynchronous, fail-safe webhook notifications for High/Critical risk alerts (`risk_score >= 61`), delivery channel audit logs, and retry endpoints ([Read Full Guide](file:///c:/Users/Dhanusri/Downloads/Infosys/infosys-springboard-safety-ai/docs/n8n-milestone-2-integration.md)).
 
 ---
 
@@ -69,12 +70,14 @@ Construction sites are high-risk, dynamic environments where traditional manual 
 | Endpoint | Method | Description |
 | :--- | :---: | :--- |
 | `/health` | `GET` | System health check (DB status, YOLO model path & threshold) |
-| `/api/safety/analyze-image` | `POST` | Upload image + zone -> YOLO inference + SafetyAgent evaluation + DB record |
+| `/api/safety/analyze-image` | `POST` | Upload image + zone -> YOLO inference + SafetyAgent evaluation + DB record + n8n dispatch |
 | `/api/safety/violations` | `GET` | List stored PPE violations with zone/severity/status filters |
 | `/api/safety/summary` | `GET` | Aggregate safety analytics (compliance rates, score, trend) |
 | `/api/safety/alerts` | `GET` | List generated safety alerts with evidence URLs & audit logs |
 | `/api/safety/alerts/{id}/acknowledge` | `POST` | Acknowledge alert with audit trail entry |
 | `/api/safety/alerts/{id}/resolve` | `POST` | Resolve alert with resolution note & audit record |
+| `/api/safety/alerts/{id}/automation-status` | `POST` | Update n8n automation delivery status (secured via `X-N8N-Secret`) |
+| `/api/safety/alerts/{id}/retry-automation` | `POST` | Re-dispatch automation webhook for High/Critical alert |
 
 ---
 

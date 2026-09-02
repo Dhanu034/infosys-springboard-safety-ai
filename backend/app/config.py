@@ -14,6 +14,7 @@ class Settings:
 
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
     N8N_SAFETY_WEBHOOK_URL: str = os.getenv("N8N_SAFETY_WEBHOOK_URL", "")
+    N8N_SHARED_SECRET: str = os.getenv("N8N_SHARED_SECRET", "")
 
     UPLOAD_DIR: str = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads")
     RESULTS_DIR: str = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "results")

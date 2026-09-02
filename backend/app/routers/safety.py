@@ -3,7 +3,7 @@ import time
 import uuid
 import json
 import datetime
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, Header
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
@@ -12,6 +12,7 @@ from app.database import get_db
 from app import models, schemas
 from app.services.yolo_detector import yolo_detector
 from app.services.safety_agent import safety_agent
+from app.services.n8n_dispatcher import n8n_dispatcher
 
 router = APIRouter()
 
@@ -82,6 +83,8 @@ async def analyze_safety_image(
 
     # Step 4: Save Violation & Alert Records to DB
     saved_violations = []
+    created_alerts_to_dispatch = []
+
     for v in agent_result["violations"]:
         violation_entry = models.PPEViolation(
             project_id=project_id,
@@ -129,8 +132,16 @@ async def analyze_safety_image(
         )
         db.add(audit_entry)
         saved_violations.append(v)
+        created_alerts_to_dispatch.append((alert_entry, violation_entry, v["recommendation"]))
 
     db.commit()
+
+    # Step 5: Optional n8n Workflow Automation Dispatch (Non-blocking & Fail-safe)
+    for alert_ent, viol_ent, rec_text in created_alerts_to_dispatch:
+        try:
+            n8n_dispatcher.dispatch_alert(alert_ent, viol_ent, db, recommendation=rec_text)
+        except Exception as e:
+            print(f"[BuildSure AI] Non-blocking n8n dispatch exception: {e}")
 
     processing_time_ms = round((time.time() - start_time) * 1000, 2)
 
@@ -316,3 +327,78 @@ def resolve_alert(
     db.commit()
 
     return {"message": "Alert resolved successfully.", "alert_id": alert_id, "status": "RESOLVED"}
+
+@router.post("/api/safety/alerts/{alert_id}/automation-status")
+def update_alert_automation_status(
+    alert_id: str,
+    req: schemas.N8NStatusUpdateRequest,
+    x_n8n_secret: str = Header(None, alias="X-N8N-Secret"),
+    db: Session = Depends(get_db)
+):
+    # Verify X-N8N-Secret header
+    # Rule: Missing header is always rejected (401 Unauthorized).
+    # If N8N_SHARED_SECRET is configured, must match exactly. If not configured, any non-empty header passes.
+    if not x_n8n_secret:
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized: Missing required 'X-N8N-Secret' authentication header."
+        )
+
+    expected_secret = settings.N8N_SHARED_SECRET.strip() if settings.N8N_SHARED_SECRET else ""
+    if expected_secret and x_n8n_secret != expected_secret:
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized: Invalid 'X-N8N-Secret' authentication secret."
+        )
+
+    alert = db.query(models.SafetyAlert).filter(models.SafetyAlert.alert_id == alert_id).first()
+    if not alert:
+        raise HTTPException(status_code=404, detail=f"Safety Alert '{alert_id}' not found.")
+
+    # Update automation status & delivery channel
+    alert.automation_status = req.automation_status
+    if req.delivery_channel:
+        alert.delivery_channel = req.delivery_channel
+    if req.message:
+        alert.automation_response_message = req.message
+
+    audit = models.SafetyAuditLog(
+        alert_id=alert_id,
+        action="AUTOMATION_STATUS_UPDATE",
+        user_reference="n8n-Workflow",
+        note=f"Automation Status: {req.automation_status} | Channel: {req.delivery_channel or 'None'}" + (f" | Detail: {req.message}" if req.message else "")
+    )
+    db.add(audit)
+    db.commit()
+
+    return {
+        "message": "Automation status updated successfully.",
+        "alert_id": alert_id,
+        "automation_status": alert.automation_status,
+        "delivery_channel": alert.delivery_channel
+    }
+
+@router.post("/api/safety/alerts/{alert_id}/retry-automation")
+def retry_alert_automation(
+    alert_id: str,
+    db: Session = Depends(get_db)
+):
+    alert = db.query(models.SafetyAlert).filter(models.SafetyAlert.alert_id == alert_id).first()
+    if not alert:
+        raise HTTPException(status_code=404, detail=f"Safety Alert '{alert_id}' not found.")
+
+    # Re-dispatch via n8n_dispatcher
+    result = n8n_dispatcher.dispatch_alert(
+        alert=alert,
+        violation=alert.violation,
+        db=db,
+        recommendation=alert.message
+    )
+
+    return {
+        "message": "Automation retry completed.",
+        "alert_id": alert_id,
+        "automation_status": alert.automation_status,
+        "delivery_channel": alert.delivery_channel,
+        "result": result
+    }

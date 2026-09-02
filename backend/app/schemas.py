@@ -40,6 +40,11 @@ class AuditLogSchema(BaseModel):
     class Config:
         from_attributes = True
 
+class N8NStatusUpdateRequest(BaseModel):
+    automation_status: str # Logged | Supervisor Notified | Urgent Review Required | Failed
+    delivery_channel: Optional[str] = "None" # Email | Slack | Teams | None
+    message: Optional[str] = None
+
 class SafetyAlertSchema(BaseModel):
     alert_id: str
     violation_id: Optional[str]
@@ -50,7 +55,12 @@ class SafetyAlertSchema(BaseModel):
     message: str
     status: str
     created_at: datetime
-    automation_status: str
+    automation_status: str = "Not Configured"
+    automation_attempted_at: Optional[datetime] = None
+    automation_response_code: Optional[int] = None
+    automation_response_message: Optional[str] = None
+    automation_last_error: Optional[str] = None
+    delivery_channel: Optional[str] = "None"
     evidence_image_url: Optional[str] = None
     audit_logs: List[AuditLogSchema] = []
 

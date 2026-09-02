@@ -64,4 +64,4 @@ def seed_default_zone_rules():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host=settings.BACKEND_HOST, port=settings.BACKEND_PORT, reload=True)
+    uvicorn.run("app.main:app", host=settings.BACKEND_HOST, port=settings.BACKEND_PORT, reload=True)

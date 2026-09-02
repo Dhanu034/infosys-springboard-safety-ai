@@ -104,3 +104,14 @@ export async function resolveAlert(alertId, resolvedBy = "Safety Supervisor", re
   if (!res.ok) throw new Error(`Failed to resolve alert (HTTP ${res.status})`);
   return await res.json();
 }
+
+export async function retryAlertAutomation(alertId) {
+  const res = await fetch(`${API_BASE_URL}/api/safety/alerts/${alertId}/retry-automation`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Failed to retry automation (HTTP ${res.status})`);
+  }
+  return await res.json();
+}
