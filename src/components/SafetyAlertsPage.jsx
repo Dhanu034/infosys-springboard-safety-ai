@@ -1,7 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, ShieldAlert, CheckCircle2, CheckSquare, Clock, FileText, Sparkles, RefreshCw, Eye, Zap, AlertTriangle, Radio, HelpCircle } from 'lucide-react';
+import { Bell, ShieldAlert, CheckCircle2, CheckSquare, Clock, FileText, Sparkles, RefreshCw, Eye, Zap, AlertTriangle, Radio, HelpCircle, X } from 'lucide-react';
 import { fetchSafetyAlerts, acknowledgeAlert, resolveAlert, retryAlertAutomation } from '../services/api';
+import ChartPanel from './ui/ChartPanel';
+import RiskBadge from './ui/RiskBadge';
+import StatusPill from './ui/StatusPill';
+import BilingualLabel from './ui/BilingualLabel';
+import EmptyState from './ui/EmptyState';
+import LoadingState from './ui/LoadingState';
 
+/**
+ * SafetyAlertsPage Component (Phase 3 Redesign)
+ * Milestone 2 Safety Alerts, n8n automation status, and audit logs styled with Industrial Precision Glassmorphism.
+ */
 export default function SafetyAlertsPage({ selectedProject }) {
   const [alerts, setAlerts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -62,51 +72,50 @@ export default function SafetyAlertsPage({ selectedProject }) {
     }
   };
 
-  const getAutomationBadge = (status) => {
-    switch (status) {
-      case 'Supervisor Notified':
-        return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
-      case 'Logged':
-        return 'bg-blue-500/20 text-blue-300 border-blue-500/40';
-      case 'Urgent Review Required':
-        return 'bg-amber-500/20 text-amber-300 border-amber-500/40';
-      case 'Failed':
-        return 'bg-red-500/20 text-red-300 border-red-500/40';
-      case 'Not Required':
-      case 'Not Configured':
-      default:
-        return 'bg-slate-700/40 text-slate-400 border-slate-600/40';
-    }
+  const getAccentClass = (status, severity) => {
+    if (status === 'RESOLVED') return 'border-accent-low bg-emerald-950/10';
+    if (severity === 'CRITICAL' || status === 'OPEN') return 'border-accent-critical bg-red-950/10';
+    return 'border-accent-high bg-amber-950/10';
   };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       
       {/* Header Banner */}
-      <div className="glass-panel p-6 rounded-2xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="glass-panel p-6 border-accent-high flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Bell className="h-7 w-7 text-amber-400" />
-            <h2 className="text-2xl font-bold tracking-tight text-slate-100">Safety Alerts & Automation Feed</h2>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30">
-              Audit Trail Active
-            </span>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 flex items-center gap-1">
-              <Zap className="h-3 w-3" /> n8n Workflow Integrated
-            </span>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/40 text-amber-300 shrink-0 glow-amber">
+              <Bell className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <BilingualLabel
+                  en="Safety Alerts & Automation Feed"
+                  ta="பாதுகாப்பு எச்சரிக்கைகள் & தானியங்கி ஊட்டல்"
+                  enClassName="text-xl font-bold tracking-tight text-slate-100 font-sans"
+                />
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                  Audit Trail Active
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 flex items-center gap-1">
+                  <Zap className="h-3 w-3" /> n8n Workflow Integrated
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 font-mono mt-0.5">
+                Real-time safety alert feed with supervisor acknowledgment, n8n webhook automation tracking, and immutable audit logs.
+              </p>
+            </div>
           </div>
-          <p className="text-sm text-slate-400 mt-1">
-            Real-time safety alert feed with supervisor acknowledgment, n8n webhook automation tracking, and immutable audit logs.
-          </p>
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
           <button
             onClick={() => setShowDevDetails(!showDevDetails)}
-            className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors flex items-center gap-1.5 ${
+            className={`px-3 py-2 rounded-xl text-xs font-mono font-bold border transition-colors flex items-center gap-1.5 ${
               showDevDetails
-                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 glow-amber'
+                : 'bg-[#0b0f10] border-slate-800 text-slate-400 hover:text-slate-200'
             }`}
             title="Toggle Developer & Integration Diagnostics"
           >
@@ -116,7 +125,7 @@ export default function SafetyAlertsPage({ selectedProject }) {
 
           <button
             onClick={loadAlerts}
-            className="px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-slate-300 hover:text-amber-400 transition-colors flex items-center gap-2"
+            className="px-3.5 py-2 rounded-xl bg-[#0b0f10] border border-slate-700 text-xs font-mono font-bold text-slate-200 hover:text-amber-300 hover:border-amber-500/50 transition-colors flex items-center gap-2"
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             <span>Refresh Alerts</span>
@@ -126,66 +135,65 @@ export default function SafetyAlertsPage({ selectedProject }) {
 
       {/* Alerts Feed */}
       <div className="space-y-4">
+        {isLoading && alerts.length === 0 && (
+          <LoadingState
+            message="Fetching Real-Time Safety Alerts..."
+            messageTa="எச்சரிக்கை தரவு பெறப்படுகிறது..."
+          />
+        )}
+
         {alerts.length === 0 && !isLoading && (
-          <div className="glass-panel p-12 rounded-xl border border-slate-800 text-center text-slate-500 font-mono">
-            No active safety alerts recorded. Upload images in PPE Detection to trigger alerts.
-          </div>
+          <EmptyState
+            title="No Active Alerts"
+            titleTa="செயலில் உள்ள எச்சரிக்கைகள் இல்லை"
+            message="No active safety alerts recorded. Upload images in PPE Detection to trigger alerts."
+            icon={ShieldAlert}
+          />
         )}
 
         {alerts.map((alertItem) => {
           const isHighOrCritical = alertItem.severity === 'CRITICAL' || alertItem.severity === 'HIGH' || alertItem.risk_score >= 61;
           const isFailedAutomation = alertItem.automation_status === 'Failed';
           const canRetry = isHighOrCritical && (isFailedAutomation || alertItem.automation_status === 'Not Configured');
+          const accentStyle = getAccentClass(alertItem.status, alertItem.severity);
 
           return (
             <div
               key={alertItem.alert_id}
-              className={`glass-panel p-5 rounded-xl border transition-all ${
-                alertItem.status === 'OPEN'
-                  ? 'border-red-500/40 bg-red-950/10'
-                  : alertItem.status === 'ACKNOWLEDGED'
-                  ? 'border-amber-500/40 bg-amber-950/10'
-                  : 'border-emerald-500/30 bg-slate-900/60'
-              }`}
+              className={`glass-panel p-5 transition-all relative overflow-hidden flex flex-col justify-between ${accentStyle}`}
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase border ${
-                    alertItem.severity === 'CRITICAL' ? 'bg-red-500/20 text-red-400 border-red-500/40' : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                  }`}>
-                    {alertItem.severity}
+                  <RiskBadge severity={alertItem.severity} />
+                  <span className="text-xs font-mono text-cyan-400 font-bold bg-[#0b0f10] px-2 py-0.5 rounded border border-slate-800">
+                    [{alertItem.alert_id.slice(0, 8)}]
                   </span>
-                  <span className="text-xs font-mono text-slate-400">[{alertItem.alert_id.slice(0, 8)}]</span>
-                  <h3 className="text-sm font-bold text-slate-100">{alertItem.title}</h3>
+                  <h3 className="text-sm font-bold text-slate-100 font-sans">{alertItem.title}</h3>
                 </div>
 
                 <div className="flex items-center gap-3 text-xs font-mono">
                   <span className="text-slate-400">Risk Score:</span>
-                  <span className="font-bold text-slate-100 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                  <span className="font-bold text-slate-100 bg-[#0b0f10] px-2.5 py-0.5 rounded border border-slate-700">
                     {alertItem.risk_score}/100
                   </span>
                 </div>
               </div>
 
               {/* Alert Message */}
-              <p className="text-xs text-slate-300 leading-relaxed mb-3 bg-slate-950/60 p-3 rounded-lg border border-slate-800">
+              <p className="text-xs text-slate-300 leading-relaxed mb-3.5 bg-[#101415]/90 p-3 rounded-lg border border-slate-800 font-sans">
                 {alertItem.message}
               </p>
 
               {/* Automation Status & Channel Banner */}
-              <div className="mb-3 p-2.5 rounded-lg bg-slate-950/80 border border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+              <div className="mb-3.5 p-3 rounded-lg bg-[#0b0f10] border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs font-mono">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-slate-400 font-mono text-[11px]">n8n Automation:</span>
-                  <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${getAutomationBadge(alertItem.automation_status)}`}>
-                    {alertItem.automation_status || 'Not Configured'}
-                  </span>
-                  {alertItem.delivery_channel && alertItem.delivery_channel !== 'None' && (
-                    <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
-                      Channel: {alertItem.delivery_channel}
-                    </span>
-                  )}
+                  <span className="text-slate-400">n8n Automation:</span>
+                  <StatusPill
+                    status={alertItem.automation_status || 'Not Configured'}
+                    channel={alertItem.delivery_channel}
+                  />
                   {alertItem.automation_attempted_at && (
-                    <span className="text-slate-500 text-[10px] font-mono">
+                    <span className="text-slate-500 text-[10px]">
                       (Attempted: {new Date(alertItem.automation_attempted_at).toLocaleTimeString()})
                     </span>
                   )}
@@ -196,7 +204,7 @@ export default function SafetyAlertsPage({ selectedProject }) {
                   <button
                     onClick={() => handleRetryAutomation(alertItem.alert_id)}
                     disabled={retryingAlertId === alertItem.alert_id}
-                    className="px-2.5 py-1 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30 text-xs font-bold border border-red-500/40 flex items-center gap-1.5 self-start sm:self-auto disabled:opacity-50"
+                    className="px-3 py-1 rounded-lg bg-red-500/20 text-red-300 hover:bg-red-500/30 text-xs font-bold font-mono border border-red-500/40 flex items-center gap-1.5 self-start sm:self-auto disabled:opacity-50"
                   >
                     <RefreshCw className={`h-3 w-3 ${retryingAlertId === alertItem.alert_id ? 'animate-spin' : ''}`} />
                     <span>Retry Automation</span>
@@ -206,7 +214,7 @@ export default function SafetyAlertsPage({ selectedProject }) {
 
               {/* Developer / Admin Diagnostic Info */}
               {showDevDetails && alertItem.automation_last_error && (
-                <div className="mb-3 p-2.5 rounded-lg bg-red-950/30 border border-red-500/30 text-[11px] font-mono text-red-300 space-y-1">
+                <div className="mb-3.5 p-3 rounded-lg bg-red-950/30 border border-red-500/30 text-[11px] font-mono text-red-300 space-y-1">
                   <div className="font-bold flex items-center gap-1">
                     <AlertTriangle className="h-3.5 w-3.5 text-red-400" /> Last Automation Error:
                   </div>
@@ -218,8 +226,8 @@ export default function SafetyAlertsPage({ selectedProject }) {
               )}
 
               {/* Bottom Actions Row */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-800/80 text-xs">
-                <div className="flex items-center gap-3 text-slate-400 font-mono text-[11px]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2.5 border-t border-slate-800/80 text-xs font-mono">
+                <div className="flex items-center gap-3 text-slate-400 text-[11px]">
                   <span>Status: <strong className="text-slate-200">{alertItem.status}</strong></span>
                   <span>•</span>
                   <span>Created: {new Date(alertItem.created_at).toLocaleTimeString()}</span>
@@ -229,7 +237,7 @@ export default function SafetyAlertsPage({ selectedProject }) {
                   {alertItem.audit_logs?.length > 0 && (
                     <button
                       onClick={() => setSelectedAlertForAudit(alertItem)}
-                      className="px-3 py-1 rounded bg-slate-800 text-slate-300 hover:text-cyan-400 text-xs font-mono border border-slate-700"
+                      className="px-3 py-1 rounded-lg bg-slate-900 text-slate-300 hover:text-cyan-300 text-xs border border-slate-700"
                     >
                       View Audit Trail ({alertItem.audit_logs.length})
                     </button>
@@ -238,7 +246,7 @@ export default function SafetyAlertsPage({ selectedProject }) {
                   {alertItem.status === 'OPEN' && (
                     <button
                       onClick={() => handleAcknowledge(alertItem.alert_id)}
-                      className="px-3 py-1 rounded bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 text-xs font-bold border border-amber-500/40"
+                      className="px-3 py-1 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 text-xs font-bold border border-amber-500/40"
                     >
                       Acknowledge Alert
                     </button>
@@ -247,7 +255,7 @@ export default function SafetyAlertsPage({ selectedProject }) {
                   {alertItem.status !== 'RESOLVED' && (
                     <button
                       onClick={() => setSelectedAlertForResolve(alertItem)}
-                      className="px-3 py-1 rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 text-xs font-bold border border-emerald-500/40"
+                      className="px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 text-xs font-bold border border-emerald-500/40"
                     >
                       Resolve Alert
                     </button>
@@ -261,23 +269,25 @@ export default function SafetyAlertsPage({ selectedProject }) {
 
       {/* Audit History Drawer Modal */}
       {selectedAlertForAudit && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex justify-end">
-          <div className="w-full max-w-md bg-slate-900 border-l border-slate-800 h-full p-6 overflow-y-auto space-y-4">
+        <div className="fixed inset-0 z-50 bg-[#0b0f10]/80 backdrop-blur-md flex justify-end">
+          <div className="w-full max-w-md bg-[#14181a] border-l border-cyan-500/30 h-full p-6 overflow-y-auto space-y-4 blueprint-grid">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h4 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+              <h4 className="text-sm font-bold text-slate-100 flex items-center gap-2 font-mono">
                 <FileText className="h-4 w-4 text-cyan-400" /> Audit Log History
               </h4>
-              <button onClick={() => setSelectedAlertForAudit(null)} className="text-slate-400 hover:text-slate-100 font-bold text-sm">✕</button>
+              <button onClick={() => setSelectedAlertForAudit(null)} className="text-slate-400 hover:text-slate-100 p-1">
+                <X className="h-5 w-5" />
+              </button>
             </div>
 
             <div className="space-y-3 font-mono text-xs">
               {selectedAlertForAudit.audit_logs.map((log) => (
-                <div key={log.audit_id} className="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
+                <div key={log.audit_id} className="p-3.5 rounded-xl bg-[#0b0f10] border border-slate-800 space-y-1">
                   <div className="flex justify-between text-cyan-400 font-bold">
                     <span>{log.action}</span>
                     <span className="text-[10px] text-slate-500">{new Date(log.created_at).toLocaleTimeString()}</span>
                   </div>
-                  <p className="text-slate-300">{log.note}</p>
+                  <p className="text-slate-300 font-sans">{log.note}</p>
                   <p className="text-[10px] text-slate-500">By: {log.user_reference}</p>
                 </div>
               ))}
@@ -288,21 +298,31 @@ export default function SafetyAlertsPage({ selectedProject }) {
 
       {/* Resolve Modal */}
       {selectedAlertForResolve && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl max-w-md w-full space-y-4">
-            <h4 className="text-sm font-bold text-slate-100">Resolve Alert #{selectedAlertForResolve.alert_id.slice(0, 8)}</h4>
+        <div className="fixed inset-0 z-50 bg-[#0b0f10]/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="glass-panel p-6 max-w-md w-full border border-emerald-500/40 shadow-2xl space-y-4">
+            <h4 className="text-base font-bold text-slate-100 font-sans">Resolve Alert #{selectedAlertForResolve.alert_id.slice(0, 8)}</h4>
             <div>
-              <label className="text-xs font-mono text-slate-400 block mb-1">Resolution Note:</label>
+              <label className="text-xs font-mono text-slate-300 block mb-1.5">Resolution Audit Note:</label>
               <textarea
                 value={resolutionNote}
                 onChange={(e) => setResolutionNote(e.target.value)}
                 placeholder="Enter resolution details..."
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 h-24"
+                className="w-full bg-[#0b0f10] border border-slate-700 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 h-24 font-sans"
               />
             </div>
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setSelectedAlertForResolve(null)} className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 text-xs">Cancel</button>
-              <button onClick={handleResolveSubmit} className="px-4 py-2 rounded-lg bg-emerald-500 text-slate-950 font-bold text-xs">Confirm Resolution</button>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setSelectedAlertForResolve(null)}
+                className="px-4 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 text-xs font-mono"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleResolveSubmit}
+                className="px-4 py-2 rounded-lg bg-emerald-400 text-slate-950 font-bold text-xs font-mono hover:bg-emerald-300"
+              >
+                Confirm Resolution
+              </button>
             </div>
           </div>
         </div>

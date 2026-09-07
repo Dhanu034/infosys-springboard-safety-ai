@@ -24,7 +24,8 @@ def health_check(db: Session = Depends(get_db)):
     except Exception:
         db_status = "degraded"
 
-    model_status = "loaded" if yolo_detector.model is not None else "fallback_demo_mode"
+    is_model_loaded = getattr(yolo_detector, 'model', None) is not None or getattr(yolo_detector, 'onnx_session', None) is not None or getattr(yolo_detector, 'ultralytics_model', None) is not None
+    model_status = "loaded" if is_model_loaded else "fallback_demo_mode"
 
     return {
         "status": "healthy",
@@ -45,7 +46,7 @@ async def analyze_safety_image(
     start_time = time.time()
 
     # Validate file type
-    allowed_extensions = [".jpg", ".jpeg", ".png", ".webp"]
+    allowed_extensions = [".jpg", ".jpeg", ".png", ".webp", ".avif", ".bmp", ".tiff", ".jfif"]
     file_ext = os.path.splitext(file.filename)[1].lower()
     if file_ext not in allowed_extensions:
         raise HTTPException(status_code=400, detail=f"Unsupported file type '{file_ext}'. Allowed types: {', '.join(allowed_extensions)}")
@@ -59,6 +60,18 @@ async def analyze_safety_image(
     content = await file.read()
     with open(orig_path, "wb") as f:
         f.write(content)
+
+    # Convert non-standard image formats (like AVIF or special PNGs) to standard JPG if OpenCV fails
+    try:
+        from PIL import Image
+        with Image.open(orig_path) as img:
+            rgb_img = img.convert('RGB')
+            # Save standard jpg version for reliable YOLO / OpenCV reading
+            standard_orig_path = os.path.join(settings.UPLOAD_DIR, f"upload_{file_id}_{timestamp_str}.jpg")
+            rgb_img.save(standard_orig_path, "JPEG")
+            orig_path = standard_orig_path
+    except Exception as conv_err:
+        print(f"[BuildSure AI] Image normalization note: {conv_err}")
 
     # Step 1: Run YOLO object detection
     detections = yolo_detector.detect_objects(orig_path)

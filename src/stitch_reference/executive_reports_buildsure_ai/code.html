@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>BuildSure AI - Executive Report</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#8aebff",
+                        "surface-tint": "#2fd9f4",
+                        "inverse-surface": "#e0e3e5",
+                        "background": "#101415",
+                        "surface-variant": "#323537",
+                        "secondary-fixed-dim": "#ffb77d",
+                        "primary-fixed-dim": "#2fd9f4",
+                        "on-secondary": "#4d2600",
+                        "on-tertiary-fixed-variant": "#005236",
+                        "on-error-container": "#ffdad6",
+                        "on-secondary-fixed-variant": "#6e3900",
+                        "surface-bright": "#363a3b",
+                        "error-container": "#93000a",
+                        "on-background": "#e0e3e5",
+                        "secondary-container": "#fd8b00",
+                        "outline": "#859397",
+                        "on-secondary-container": "#603100",
+                        "on-primary": "#00363e",
+                        "secondary-fixed": "#ffdcc3",
+                        "tertiary-fixed-dim": "#4edea3",
+                        "on-surface-variant": "#bbc9cd",
+                        "on-surface": "#e0e3e5",
+                        "primary-container": "#22d3ee",
+                        "surface-container-lowest": "#0b0f10",
+                        "surface-dim": "#101415",
+                        "on-primary-fixed-variant": "#004e5a",
+                        "tertiary-container": "#46d89d",
+                        "on-primary-container": "#005763",
+                        "on-tertiary-container": "#005a3d",
+                        "on-secondary-fixed": "#2f1500",
+                        "primary-fixed": "#a2eeff",
+                        "outline-variant": "#3c494c",
+                        "surface-container": "#1d2022",
+                        "on-error": "#690005",
+                        "inverse-primary": "#006877",
+                        "secondary": "#ffb77d",
+                        "on-primary-fixed": "#001f25",
+                        "surface-container-low": "#191c1e",
+                        "inverse-on-surface": "#2d3133",
+                        "surface-container-highest": "#323537",
+                        "on-tertiary": "#003824",
+                        "surface-container-high": "#272a2c",
+                        "surface": "#101415",
+                        "error": "#ffb4ab",
+                        "tertiary": "#68f5b8",
+                        "on-tertiary-fixed": "#002113",
+                        "tertiary-fixed": "#6ffbbe"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "margin-edge": "32px",
+                        "gutter": "24px",
+                        "container-max": "1440px"
+                    },
+                    "fontFamily": {
+                        "bilingual-label-ta": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "headline-xl": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "mono-label": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "bilingual-label-ta": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "headline-xl": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-lg": ["30px", { "lineHeight": "38px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "mono-label": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #0B121E;
+            background-image: 
+                linear-gradient(rgba(34, 211, 238, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(34, 211, 238, 0.05) 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        .glass-panel {
+            background-color: rgba(22, 32, 50, 0.8);
+            backdrop-filter: blur(12px);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+        }
+        .hazard-stripe {
+            background: repeating-linear-gradient(
+                45deg,
+                rgba(253, 139, 0, 0.2),
+                rgba(253, 139, 0, 0.2) 10px,
+                transparent 10px,
+                transparent 20px
+            );
+        }
+    </style>
+</head>
+<body class="text-on-background font-body-md h-screen overflow-hidden flex">
+<!-- SideNavBar -->
+<nav class="hidden md:flex flex-col h-full py-unit-margin-edge bg-surface-dim/80 backdrop-blur-xl h-screen w-64 fixed left-0 top-0 border-r border-outline-variant/30 shadow-2xl z-50">
+<div class="px-gutter mb-margin-edge">
+<h1 class="font-headline-md text-headline-md font-bold text-primary tracking-tighter">BuildSure AI</h1>
+<p class="font-mono-label text-mono-label text-on-surface-variant">Vigilance System v2.4</p>
+</div>
+<ul class="flex-1 space-y-2 px-unit">
+<!-- Inactive -->
+<li><a class="flex items-center px-gutter py-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50 transition-colors duration-200 active:scale-95 transform transition-transform" href="#"><span class="material-symbols-outlined mr-unit">dashboard</span><span class="font-body-md text-body-md">Command Center</span></a></li>
+<li><a class="flex items-center px-gutter py-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50 transition-colors duration-200 active:scale-95 transform transition-transform" href="#"><span class="material-symbols-outlined mr-unit">warning</span><span class="font-body-md text-body-md">Site Risk</span></a></li>
+<li><a class="flex items-center px-gutter py-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50 transition-colors duration-200 active:scale-95 transform transition-transform" href="#"><span class="material-symbols-outlined mr-unit">engineering</span><span class="font-body-md text-body-md">PPE Safety</span></a></li>
+<li><a class="flex items-center px-gutter py-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50 transition-colors duration-200 active:scale-95 transform transition-transform" href="#"><span class="material-symbols-outlined mr-unit">analytics</span><span class="font-body-md text-body-md">Safety Dashboard</span></a></li>
+<li><a class="flex items-center px-gutter py-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50 transition-colors duration-200 active:scale-95 transform transition-transform" href="#"><span class="material-symbols-outlined mr-unit">notifications_active</span><span class="font-body-md text-body-md">Alert Center</span></a></li>
+<li><a class="flex items-center px-gutter py-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50 transition-colors duration-200 active:scale-95 transform transition-transform" href="#"><span class="material-symbols-outlined mr-unit">smart_toy</span><span class="font-body-md text-body-md">Agent Network</span></a></li>
+<li><a class="flex items-center px-gutter py-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50 transition-colors duration-200 active:scale-95 transform transition-transform" href="#"><span class="material-symbols-outlined mr-unit">verified_user</span><span class="font-body-md text-body-md">Compliance</span></a></li>
+<!-- Active -->
+<li><a class="flex items-center px-gutter py-2 text-primary font-bold border-r-4 border-primary bg-primary/5 hover:bg-surface-variant/50 transition-colors duration-200 active:scale-95 transform transition-transform" href="#"><span class="material-symbols-outlined mr-unit">description</span><span class="font-body-md text-body-md">Reports</span></a></li>
+<li><a class="flex items-center px-gutter py-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50 transition-colors duration-200 active:scale-95 transform transition-transform" href="#"><span class="material-symbols-outlined mr-unit">settings</span><span class="font-body-md text-body-md">Settings</span></a></li>
+</ul>
+<div class="mt-auto px-unit">
+<a class="flex items-center px-gutter py-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50 transition-colors duration-200 active:scale-95 transform transition-transform" href="#"><span class="material-symbols-outlined mr-unit">help_outline</span><span class="font-body-md text-body-md">Support</span></a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 ml-0 md:ml-64 flex flex-col h-screen relative">
+<!-- TopNavBar -->
+<header class="hidden md:flex justify-between items-center px-margin-edge w-full bg-surface/90 backdrop-blur-md fixed top-0 right-0 w-[calc(100%-16rem)] h-16 border-b border-outline-variant/20 z-40">
+<div class="flex items-center gap-6">
+<a class="font-headline-md text-headline-md text-on-surface-variant hover:text-primary transition-all cursor-pointer hover:opacity-80" href="#">Project Alpha</a>
+<a class="font-headline-md text-headline-md text-on-surface-variant hover:text-primary transition-all cursor-pointer hover:opacity-80" href="#">Site B-102</a>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-mono-label text-mono-label text-primary bg-primary/10 px-3 py-1 rounded border border-primary/30">AI HEARTBEAT: ACTIVE</span>
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-all cursor-pointer">notifications</span>
+<img alt="Chief Safety Officer" class="w-8 h-8 rounded-full border border-outline-variant object-cover" data-alt="A small circular profile picture of a construction safety officer wearing a white hardhat and reflective vest, rendered in a high-contrast industrial style against a dark background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAWP8YjmVWaRiihY3syyK5lmWjFU11txSOc9L2yRRO8Rny1hxWGtG3eZ8e3P30L_f2-ESvh1F03kzF1d__6jnIsg_bH1qfZ0uIjiGY5U0CSpDvCI3Q_yz5Srhh0AiD9PdDPExls9Ygn6fTA4_J-d_QhjMHg58x_rprzD5H5XYbZlUToAYGtkFb8RXX1CmTfo-yn8rQm-HyfyrSCNUNUkVR2O5FhnNPSf5NoQjKN9sJjePRqpQJtb_WP"/>
+</div>
+</header>
+<!-- Scrollable Content Canvas -->
+<div class="flex-1 overflow-y-auto pt-24 pb-20 px-4 md:px-margin-edge">
+<div class="max-w-container-max mx-auto space-y-6">
+<!-- Page Header & Actions -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
+<div>
+<h2 class="font-headline-xl text-headline-xl text-on-surface">Executive Report</h2>
+<p class="font-mono-label text-mono-label text-outline mt-2 uppercase tracking-widest">Q3 Safety &amp; Compliance Overview // Project Alpha</p>
+</div>
+<div class="flex gap-4 w-full md:w-auto">
+<button class="flex-1 md:flex-none flex items-center justify-center gap-2 bg-transparent border border-outline hover:border-primary text-on-surface hover:text-primary px-6 py-3 rounded-DEFAULT transition-colors font-mono-label text-mono-label uppercase tracking-wider">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">file_download</span>
+                            Export Audit Summary
+                        </button>
+<button class="flex-1 md:flex-none flex items-center justify-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-DEFAULT hover:bg-primary-fixed transition-colors font-mono-label text-mono-label uppercase tracking-wider font-bold shadow-[0_0_15px_rgba(34,211,238,0.3)]">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">description</span>
+                            Generate Daily Report
+                        </button>
+</div>
+</div>
+<!-- Project Health Summary (Bento Grid) -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Health Score -->
+<div class="glass-panel rounded-xl p-6 relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-1 h-full bg-tertiary"></div>
+<div class="flex justify-between items-start mb-4">
+<span class="font-mono-label text-mono-label text-tertiary">SYS-HLTH-01</span>
+<span class="material-symbols-outlined text-tertiary">health_and_safety</span>
+</div>
+<h3 class="font-body-lg text-body-lg text-on-surface-variant mb-1">Overall Health Score</h3>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-xl text-headline-xl text-on-surface">94</span>
+<span class="font-mono-label text-mono-label text-tertiary">+2.4% MoM</span>
+</div>
+<div class="mt-4 h-2 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-tertiary w-[94%] shadow-[0_0_10px_rgba(104,245,184,0.5)]"></div>
+</div>
+</div>
+<!-- Open Risks -->
+<div class="glass-panel rounded-xl p-6 relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-secondary-container"></div>
+<div class="hazard-stripe absolute top-0 left-0 w-full h-2"></div>
+<div class="flex justify-between items-start mb-4 mt-2">
+<span class="font-mono-label text-mono-label text-secondary-container">RSK-ACT-02</span>
+<span class="material-symbols-outlined text-secondary-container">warning</span>
+</div>
+<h3 class="font-body-lg text-body-lg text-on-surface-variant mb-1">Active High Risks</h3>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-xl text-headline-xl text-on-surface">3</span>
+<span class="font-mono-label text-mono-label text-secondary-container">-1 from Prev</span>
+</div>
+<div class="mt-4 flex gap-2">
+<span class="font-mono-label text-mono-label bg-surface-container px-2 py-1 rounded text-outline text-[10px]">ZONE A</span>
+<span class="font-mono-label text-mono-label bg-surface-container px-2 py-1 rounded text-outline text-[10px]">PPE NON-COMP</span>
+</div>
+</div>
+<!-- Compliance -->
+<div class="glass-panel rounded-xl p-6 relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-primary"></div>
+<div class="flex justify-between items-start mb-4">
+<span class="font-mono-label text-mono-label text-primary">CMP-RTE-03</span>
+<span class="material-symbols-outlined text-primary">verified</span>
+</div>
+<h3 class="font-body-lg text-body-lg text-on-surface-variant mb-1">Compliance Rate</h3>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-xl text-headline-xl text-on-surface">98.2%</span>
+<span class="font-mono-label text-mono-label text-primary">TARGET: 99%</span>
+</div>
+<div class="mt-4 h-2 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[98.2%] shadow-[0_0_10px_rgba(138,235,255,0.5)]"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer -->
+<footer class="hidden md:flex items-center justify-between px-margin-edge w-full bg-surface-container-lowest/95 backdrop-blur-md fixed bottom-0 right-0 w-[calc(100%-16rem)] h-10 border-t border-outline-variant/30 z-40">
+<p class="font-mono-label text-mono-label uppercase tracking-widest text-primary">BuildSure AI Command Center | Agent Status: Site Risk (Online), Safety (Online), Compliance (Standby)</p>
+<div class="flex gap-4">
+<a class="font-mono-label text-mono-label text-outline hover:text-primary transition-opacity duration-300" href="#">Agent Network</a>
+<a class="font-mono-label text-mono-label text-outline hover:text-primary transition-opacity duration-300" href="#">System Health</a>
+<a class="font-mono-label text-mono-label text-outline hover:text-primary transition-opacity duration-300" href="#">Security Protocol</a>
+</div>
+</footer>
+</main>
+</body></html>

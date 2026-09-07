@@ -1,21 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import Header from './components/Header';
-import MetricsOverview from './components/MetricsOverview';
-import SiteMapGrid from './components/SiteMapGrid';
-import RiskHeatmapMatrix from './components/RiskHeatmapMatrix';
-import HazardDetectionPanel from './components/HazardDetectionPanel';
-import RiskAnalyticsCharts from './components/RiskAnalyticsCharts';
-import SimulatorControls from './components/SimulatorControls';
-import AgentReasoningDrawer from './components/AgentReasoningDrawer';
 
-// Milestone 2 Components
-import PPEDetectionPage from './components/PPEDetectionPage';
-import SafetyDashboardPage from './components/SafetyDashboardPage';
-import SafetyAlertsPage from './components/SafetyAlertsPage';
+// Layout Components
+import SideNavBar from './components/layout/SideNavBar';
+import TopNavBar from './components/layout/TopNavBar';
+import BottomTicker from './components/layout/BottomTicker';
+
+// Page Views (Exact Google Stitch Layouts)
+import CommandCenterPage from './components/pages/CommandCenterPage';
+import SiteRiskPage from './components/pages/SiteRiskPage';
+import PPESafetyPage from './components/pages/PPESafetyPage';
+import SafetyDashboardPage from './components/pages/SafetyDashboardPage';
+import AlertCenterPage from './components/pages/AlertCenterPage';
+import AgentNetworkPage from './components/pages/AgentNetworkPage';
+import ExecutiveReportsPage from './components/pages/ExecutiveReportsPage';
+
+// Agent Reasoning Drawer
+import AgentReasoningDrawer from './components/AgentReasoningDrawer';
 
 import { MOCK_PROJECTS, MOCK_SITE_ZONES, MOCK_HAZARDS } from './data/mockSiteData';
 import { siteRiskAgent } from './agents/SiteRiskAgent';
-import { ShieldAlert, AlertCircle, Info, Sparkles, Terminal } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 export default function App() {
   const [projects] = useState(MOCK_PROJECTS);
@@ -25,8 +29,8 @@ export default function App() {
   const [selectedHazardForTrace, setSelectedHazardForTrace] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
 
-  // Active Tab State: SITE_RISK (M1), PPE_DETECTION (M2), SAFETY_DASHBOARD (M2), SAFETY_ALERTS (M2)
-  const [activeTab, setActiveTab] = useState('SITE_RISK');
+  // Active Tab State (Exact Stitch Navigation Keys)
+  const [activeTab, setActiveTab] = useState('COMMAND_CENTER');
 
   // Initialize and evaluate hazards with Site Risk Agent on mount or project change
   useEffect(() => {
@@ -75,10 +79,16 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#101415] text-[#e0e3e5] blueprint-grid flex font-sans antialiased overflow-x-hidden selection:bg-cyan-500 selection:text-slate-950">
       
-      {/* Top Bar Header with Navigation Tabs */}
-      <Header
+      {/* 1. Left Fixed Sidebar Navigation */}
+      <SideNavBar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+      />
+
+      {/* 2. Top Navigation Bar */}
+      <TopNavBar
         selectedProject={selectedProject}
         setSelectedProject={setSelectedProject}
         projects={projects}
@@ -88,90 +98,104 @@ export default function App() {
         setActiveTab={setActiveTab}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6">
+      {/* 3. Main Content Area */}
+      <main className="ml-64 mt-16 pb-16 min-h-screen p-6 lg:p-8 w-[calc(100%-16rem)]">
         
         {/* Toast Notification Banner */}
         {toastMessage && (
-          <div className="mb-5 p-3.5 rounded-xl bg-cyan-950/80 border border-cyan-500/50 text-cyan-200 text-xs font-semibold flex items-center justify-between shadow-lg glow-cyan animate-in fade-in slide-in-from-top-2">
+          <div className="mb-6 p-3.5 rounded-xl bg-cyan-950/90 border border-cyan-500/50 text-cyan-200 text-xs font-semibold flex items-center justify-between shadow-lg glow-cyan animate-in fade-in slide-in-from-top-2 font-mono">
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-cyan-400 shrink-0" />
               <span>{toastMessage}</span>
             </div>
-            <span className="text-[10px] font-mono opacity-75">BuildSure AI System Alert</span>
+            <span className="text-[10px] opacity-75">BuildSure AI System Alert</span>
           </div>
         )}
 
-        {/* Tab 1: Milestone 1 — Site Risk Command Center (Preserved 100%) */}
+        {/* Tab 1: Command Center (Image 4 Left) */}
+        {activeTab === 'COMMAND_CENTER' && (
+          <CommandCenterPage
+            project={selectedProject}
+            hazards={hazards}
+            zones={zones}
+            onTriggerEvent={handleTriggerSimulatedEvent}
+            onReset={handleResetFeed}
+            onNavigateToPPE={() => setActiveTab('PPE_DETECTION')}
+            onNavigateToAlerts={() => setActiveTab('SAFETY_ALERTS')}
+          />
+        )}
+
+        {/* Tab 2: Site Risk Monitoring (Image 3 Left) */}
         {activeTab === 'SITE_RISK' && (
-          <div className="space-y-6 animate-in fade-in duration-300">
-            {/* Live Simulator Trigger Bar */}
-            <SimulatorControls
-              onTriggerEvent={handleTriggerSimulatedEvent}
-              onReset={handleResetFeed}
-            />
+          <SiteRiskPage
+            project={selectedProject}
+            hazards={hazards}
+            zones={zones}
+            onInspectReasoning={(hazard) => setSelectedHazardForTrace(hazard || hazards[0])}
+          />
+        )}
 
-            {/* Top Key Metrics Overview */}
-            <MetricsOverview
-              project={selectedProject}
-              hazards={hazards}
-              zones={zones}
-            />
+        {/* Tab 3: PPE Safety Detection (Image 4 Right) */}
+        {activeTab === 'PPE_DETECTION' && (
+          <PPESafetyPage
+            selectedProject={selectedProject}
+          />
+        )}
 
-            {/* Interactive Spatial Site Map Grid */}
-            <SiteMapGrid
-              zones={zones}
-              onSelectZone={(zone) => {
-                showToast(`Inspecting ${zone.name}. Active Risk Score: ${zone.riskScore}`);
-              }}
-            />
+        {/* Tab 4: Safety Intelligence Dashboard (Image 3 Right) */}
+        {activeTab === 'SAFETY_DASHBOARD' && (
+          <SafetyDashboardPage
+            selectedProject={selectedProject}
+          />
+        )}
 
-            {/* 5x5 Probability vs Impact Risk Heatmap Matrix */}
-            <RiskHeatmapMatrix
-              hazards={hazards}
-            />
+        {/* Tab 5: Alert Center (Image 2 Left) */}
+        {activeTab === 'SAFETY_ALERTS' && (
+          <AlertCenterPage
+            selectedProject={selectedProject}
+          />
+        )}
 
-            {/* Live Hazard Detection & AI Recommendation Cards */}
-            <HazardDetectionPanel
-              hazards={hazards}
-              onInspectReasoning={(hazard) => setSelectedHazardForTrace(hazard)}
-            />
+        {/* Tab 6: Agent Network Topology (Image 1) */}
+        {activeTab === 'AGENT_NETWORK' && (
+          <AgentNetworkPage />
+        )}
 
-            {/* Risk Distribution & Historical Trend Charts */}
-            <RiskAnalyticsCharts />
+        {/* Tab 7: Compliance */}
+        {activeTab === 'COMPLIANCE' && (
+          <div className="glass-panel p-8 rounded-2xl border border-cyan-500/30 text-center space-y-3">
+            <h3 className="text-lg font-bold text-[#e0e3e5] font-sans">Compliance & Regulatory Intelligence</h3>
+            <p className="text-xs font-mono text-[#859397]">
+              Milestone 3 OSHA 1926 automated regulatory checking module.
+            </p>
           </div>
         )}
 
-        {/* Tab 2: Milestone 2 — PPE Safety Detection */}
-        {activeTab === 'PPE_DETECTION' && (
-          <PPEDetectionPage selectedProject={selectedProject} />
+        {/* Tab 8: Reports (Image 2 Right) */}
+        {activeTab === 'REPORTS' && (
+          <ExecutiveReportsPage />
         )}
 
-        {/* Tab 3: Milestone 2 — Safety Intelligence Dashboard */}
-        {activeTab === 'SAFETY_DASHBOARD' && (
-          <SafetyDashboardPage selectedProject={selectedProject} />
-        )}
-
-        {/* Tab 4: Milestone 2 — Safety Alerts & Audit History */}
-        {activeTab === 'SAFETY_ALERTS' && (
-          <SafetyAlertsPage selectedProject={selectedProject} />
+        {/* Tab 9: Settings / Support */}
+        {(activeTab === 'SETTINGS' || activeTab === 'SUPPORT') && (
+          <div className="glass-panel p-8 rounded-2xl border border-[#3c494c]/30 text-center space-y-3">
+            <h3 className="text-lg font-bold text-[#e0e3e5] font-sans">BuildSure AI System Configuration</h3>
+            <p className="text-xs font-mono text-[#859397]">
+              Vigilance System v2.4 • FastAPI & YOLOv8 Inference Active
+            </p>
+          </div>
         )}
 
       </main>
 
-      {/* Slide-out Agent XAI Decision Trace Drawer (Milestone 1) */}
+      {/* 4. Slide-out Agent XAI Decision Trace Drawer */}
       <AgentReasoningDrawer
         hazard={selectedHazardForTrace}
         onClose={() => setSelectedHazardForTrace(null)}
       />
 
-      {/* Footer */}
-      <footer className="border-t border-slate-800/80 py-4 px-4 lg:px-8 text-center text-xs text-slate-500 bg-slate-950">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>BuildSure AI — Agentic Construction Risk Intelligence Platform</span>
-          <span className="font-mono text-[11px]">Infosys Springboard Internship • Milestone 1 & 2 Release</span>
-        </div>
-      </footer>
+      {/* 5. Fixed Bottom Status Ticker */}
+      <BottomTicker />
 
     </div>
   );

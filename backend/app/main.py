@@ -17,6 +17,15 @@ app = FastAPI(
     version="2.0.0"
 )
 
+@app.get("/")
+def root():
+    return {
+        "message": "BuildSure AI — Safety Intelligence API is running!",
+        "docs": "http://127.0.0.1:8000/docs",
+        "health": "http://127.0.0.1:8000/health",
+        "frontend": "http://localhost:5173"
+    }
+
 # CORS Configuration
 origins = [
     settings.FRONTEND_URL,
