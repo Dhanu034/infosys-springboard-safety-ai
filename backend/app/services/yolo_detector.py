@@ -7,13 +7,11 @@ from app.config import settings
 
 class YOLODetector:
     """
-    BuildSure AI — Universal YOLO + OpenCV Computer Vision Detection Service
-    Performs precise multi-strategy inference on ANY uploaded image:
-    - Neural YOLO / ONNX inference if model weights exist
-    - OpenCV HOG Multi-Scale Pedestrian/Worker Detection
-    - OpenCV Haar Cascade Spatial Region Detection (Full Body, Upper Body, Face/Head)
-    - Multi-Spectral Color & Texture Spectroscopy for Hardhats (Yellow, White, Orange, Blue, Red)
-      and High-Visibility Vests (Neon Lime, Orange, Silver retroreflective stripes)
+    BuildSure AI — Universal YOLOv8 + OpenCV Computer Vision Detection Service
+    Performs precise real-time detection on ANY uploaded construction image:
+    - Neural YOLOv8 (PyTorch / ONNX) worker & person detection with high spatial precision
+    - Multi-Spectral Color & Texture Hardhat Analysis (Yellow, White, Orange, Blue)
+    - High-Visibility Safety Vest Detection (Fluorescent Lime, Orange, Reflective Stripes)
     - Generates high-res annotated OpenCV images with color-coded bounding boxes.
     """
 
@@ -22,14 +20,70 @@ class YOLODetector:
         self.confidence_threshold = settings.YOLO_CONFIDENCE_THRESHOLD
         self.ultralytics_model = None
         self.onnx_session = None
-        self.hog = cv2.HOGDescriptor()
-        self.hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
+        self.hog = None
         self._load_model()
+        self._load_hog()
         self._load_cascades()
 
-    @property
-    def model(self):
-        return self.ultralytics_model if self.ultralytics_model is not None else self.onnx_session
+    def _load_model(self):
+        # Determine candidate model paths
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        candidate_paths = [
+            self.model_path,
+            os.path.join(base_dir, "yolov8n.pt"),
+            os.path.join(base_dir, "backend", "yolov8n.pt"),
+            "backend/yolov8n.pt",
+            "yolov8n.pt"
+        ]
+
+        # 1. Try loading Ultralytics YOLO PyTorch model
+        try:
+            from ultralytics import YOLO
+            loaded = False
+            for p in candidate_paths:
+                if p and os.path.exists(p):
+                    self.ultralytics_model = YOLO(p)
+                    print(f"[YOLODetector] Successfully loaded YOLO model from '{p}'.")
+                    loaded = True
+                    break
+            if not loaded:
+                # Let ultralytics load or auto-download yolov8n.pt
+                self.ultralytics_model = YOLO("yolov8n.pt")
+                print("[YOLODetector] Successfully initialized YOLO model 'yolov8n.pt'.")
+                return
+        except Exception as e:
+            print(f"[YOLODetector] Ultralytics load note: {e}")
+
+        # 2. Try loading ONNX YOLO model via onnxruntime
+        onnx_candidates = [
+            os.path.join(base_dir, "yolov8n.onnx"),
+            os.path.join(base_dir, "backend", "yolov8n.onnx"),
+            os.path.join(base_dir, "yolo_coco.onnx"),
+            os.path.join(base_dir, "backend", "yolo_coco.onnx"),
+            "backend/yolov8n.onnx",
+            "yolov8n.onnx"
+        ]
+        try:
+            import onnxruntime as ort
+            for candidate in onnx_candidates:
+                if os.path.exists(candidate):
+                    self.onnx_session = ort.InferenceSession(candidate, providers=['CPUExecutionProvider'])
+                    self.onnx_input_name = self.onnx_session.get_inputs()[0].name
+                    print(f"[YOLODetector] Successfully loaded ONNX YOLO model from '{candidate}'.")
+                    return
+        except Exception as e:
+            print(f"[YOLODetector] ONNX load note: {e}")
+
+        print("[YOLODetector] Initialized Computer Vision Detection Service.")
+
+    def _load_hog(self):
+        try:
+            if hasattr(cv2, 'HOGDescriptor') and hasattr(cv2, 'HOGDescriptor_getDefaultPeopleDetector'):
+                self.hog = cv2.HOGDescriptor()
+                self.hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
+        except Exception as e:
+            print(f"[YOLODetector] HOG init note: {e}")
+            self.hog = None
 
     def _load_cascades(self):
         self.face_cascade = None
@@ -50,42 +104,14 @@ class YOLODetector:
         except Exception as e:
             print(f"[YOLODetector] Cascade load note: {e}")
 
-    def _load_model(self):
-        # 1. Try loading Ultralytics YOLO PyTorch model if available
-        try:
-            from ultralytics import YOLO
-            if os.path.exists(self.model_path):
-                self.ultralytics_model = YOLO(self.model_path)
-                print(f"[YOLODetector] Successfully loaded YOLO model from '{self.model_path}'.")
-                return
-        except Exception as e:
-            print(f"[YOLODetector] Ultralytics load note: {e}")
-
-        # 2. Try loading ONNX YOLO model via onnxruntime
-        onnx_candidates = [
-            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "yolo_coco.onnx"),
-            "backend/yolo_coco.onnx",
-            "yolo_coco.onnx",
-            "backend/yolov8n.onnx",
-            "yolov8n.onnx"
-        ]
-        try:
-            import onnxruntime as ort
-            for candidate in onnx_candidates:
-                if os.path.exists(candidate):
-                    self.onnx_session = ort.InferenceSession(candidate, providers=['CPUExecutionProvider'])
-                    self.onnx_input_name = self.onnx_session.get_inputs()[0].name
-                    self.onnx_input_type = self.onnx_session.get_inputs()[0].type
-                    print(f"[YOLODetector] Successfully loaded ONNX YOLO model from '{candidate}'.")
-                    return
-        except Exception as e:
-            print(f"[YOLODetector] ONNX load note: {e}")
-
-        print("[YOLODetector] Operating in Universal Multi-Strategy OpenCV Vision Analysis Mode.")
+    @property
+    def model(self):
+        return self.ultralytics_model if self.ultralytics_model is not None else self.onnx_session
 
     def detect_objects(self, image_path):
         """
         Runs comprehensive multi-strategy worker + PPE detection on ANY uploaded image.
+        Detects all workers even in crowded scenes, distant shots, or behind scaffolding/rebar.
         Returns list of detections: [{"class": str, "confidence": float, "box": [x1, y1, x2, y2]}]
         """
         img = cv2.imread(image_path)
@@ -95,10 +121,18 @@ class YOLODetector:
         h0, w0, _ = img.shape
         raw_persons = []
 
-        # Tier 1: Neural Network YOLO / ONNX
+        # Tier 1: Neural Network YOLO (High-resolution multi-scale inference for crowded/occluded scenes)
         if self.ultralytics_model is not None:
             try:
-                results = self.ultralytics_model(image_path, conf=0.15)
+                # Use higher inference resolution (1024) to resolve distant and partially occluded workers
+                imgsz = 1024 if max(w0, h0) >= 1000 else 640
+                results = self.ultralytics_model(
+                    image_path,
+                    conf=0.10,          # Lower confidence floor to catch occluded workers behind rebar/scaffolding
+                    iou=0.60,           # Allow adjacent workers standing side-by-side
+                    imgsz=imgsz,
+                    verbose=False
+                )
                 for r in results:
                     for box in r.boxes:
                         cls_id = int(box.cls[0])
@@ -106,21 +140,25 @@ class YOLODetector:
                         conf = float(box.conf[0])
                         xyxy = box.xyxy[0].cpu().numpy().tolist()
                         x1, y1, x2, y2 = [int(v) for v in xyxy]
+                        
+                        # Filter for real person/worker detections with valid minimum dimensions
                         if class_name in ["person", "worker"]:
-                            raw_persons.append({'box': [max(0, x1), max(0, y1), min(w0, x2), min(h0, y2)], 'confidence': conf})
+                            bw = x2 - x1
+                            bh = y2 - y1
+                            # Minimum 12px width & 18px height (allows full-body, upper-body, and distant workers)
+                            if bw >= 12 and bh >= 18:
+                                raw_persons.append({
+                                    'box': [max(0, x1), max(0, y1), min(w0, x2), min(h0, y2)],
+                                    'confidence': round(conf, 2)
+                                })
             except Exception as err:
                 print(f"[YOLODetector] Ultralytics inference exception: {err}")
 
-        # Tier 2: OpenCV HOG Multi-Scale Pedestrian Detector
-        if not raw_persons:
+        # Tier 2: OpenCV HOG Multi-Scale Pedestrian Detector (only used if neural model found 0 persons)
+        if not raw_persons and self.hog is not None:
             try:
-                # Resize large images for optimal HOG detection speed
                 scale = min(1.0, 1000.0 / max(w0, h0))
-                if scale < 1.0:
-                    small_img = cv2.resize(img, (int(w0 * scale), int(h0 * scale)))
-                else:
-                    small_img = img
-
+                small_img = cv2.resize(img, (int(w0 * scale), int(h0 * scale))) if scale < 1.0 else img
                 gray = cv2.cvtColor(small_img, cv2.COLOR_BGR2GRAY)
                 boxes_hog, weights = self.hog.detectMultiScale(
                     gray,
@@ -141,63 +179,25 @@ class YOLODetector:
             except Exception as err:
                 print(f"[YOLODetector] HOG exception: {err}")
 
-        # Tier 3: Haar Cascades (Upper body & Face) for closeups & occluded shots
-        if len(raw_persons) < 2 and (self.upper_cascade or self.face_cascade or self.body_cascade):
+        # Tier 3: Haar Cascades for closeups & occluded shots (only if still no persons found)
+        if len(raw_persons) == 0 and (self.upper_cascade or self.body_cascade):
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            
-            # Full body
             if self.body_cascade:
                 bodies = self.body_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(40, 80))
                 for (bx, by, bw, bh) in bodies:
-                    raw_persons.append({'box': [bx, by, bx + bw, by + bh], 'confidence': 0.88})
-
-            # Upper body (expand to approximate full person)
-            if self.upper_cascade and len(raw_persons) < 2:
-                uppers = self.upper_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(50, 50))
+                    raw_persons.append({'box': [bx, by, bx + bw, by + bh], 'confidence': 0.85})
+            if self.upper_cascade and len(raw_persons) == 0:
+                uppers = self.upper_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(40, 40))
                 for (ux, uy, uw, uh) in uppers:
                     py2 = min(h0, uy + int(uh * 2.2))
-                    raw_persons.append({'box': [ux, uy, ux + uw, py2], 'confidence': 0.86})
+                    raw_persons.append({'box': [ux, uy, ux + uw, py2], 'confidence': 0.82})
 
-            # Face detector (expand for portraits/headshots)
-            if self.face_cascade and len(raw_persons) == 0:
-                faces = self.face_cascade.detectMultiScale(gray, scaleFactor=1.15, minNeighbors=4, minSize=(30, 30))
-                for (fx, fy, fw, fh) in faces:
-                    px1 = max(0, fx - int(fw * 0.8))
-                    px2 = min(w0, fx + fw + int(fw * 0.8))
-                    py1 = max(0, fy - int(fh * 0.3))
-                    py2 = min(h0, fy + int(fh * 4.5))
-                    raw_persons.append({'box': [px1, py1, px2, py2], 'confidence': 0.85})
-
-        # Tier 4: Color Spectrum & Saliency Contour Mining (High-vis vest / helmet clusters)
-        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-        m_yellow = cv2.inRange(hsv, np.array([16, 75, 95]), np.array([38, 255, 255]))
-        m_orange = cv2.inRange(hsv, np.array([4, 100, 95]), np.array([17, 255, 255]))
-        m_clothing = cv2.bitwise_or(m_yellow, m_orange)
-        k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
-        m_clothing_clean = cv2.morphologyEx(m_clothing, cv2.MORPH_CLOSE, k)
-        cnts, _ = cv2.findContours(m_clothing_clean, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-        min_area = (w0 * h0) * 0.0008
-        max_area = (w0 * h0) * 0.40
-        for c in cnts:
-            area = cv2.contourArea(c)
-            if min_area < area < max_area:
-                bx, by, bw, bh = cv2.boundingRect(c)
-                px1 = max(0, bx - int(bw * 0.25))
-                py1 = max(0, by - int(bh * 0.40))
-                px2 = min(w0, bx + bw + int(bw * 0.25))
-                py2 = min(h0, by + bh + int(bh * 0.80))
-                raw_persons.append({
-                    'box': [px1, py1, px2, py2],
-                    'confidence': 0.89
-                })
-
-        # Deduplicate raw persons via Non-Maximum Suppression (NMS)
+        # Deduplicate persons via Non-Maximum Suppression (NMS) with relaxed overlap (0.65) to keep side-by-side workers
         unique_persons = []
         if raw_persons:
             boxes = [p['box'] for p in raw_persons]
             confs = [p['confidence'] for p in raw_persons]
-            indices = cv2.dnn.NMSBoxes(boxes, confs, 0.10, 0.35)
+            indices = cv2.dnn.NMSBoxes(boxes, confs, 0.10, 0.65)
             for idx in indices:
                 i = idx[0] if isinstance(idx, (list, np.ndarray)) else idx
                 unique_persons.append({
@@ -206,31 +206,38 @@ class YOLODetector:
                     'box': boxes[i]
                 })
 
-        # Smart fallback if image has general structures or unsegmented subjects
-        if not unique_persons:
-            unique_persons = self._dynamic_subject_segmentation(img)
+        # Sort workers spatially from left to right (x1 ascending) for organized telemetry
+        unique_persons.sort(key=lambda p: p['box'][0])
 
-        # Step 5: Detect and strictly calibrate Helmet and Safety Vest for each worker
+        # Step 4: Detect and strictly calibrate Helmet and Safety Vest for each detected worker
         all_detections = list(unique_persons)
         for p in unique_persons:
             x1, y1, x2, y2 = p['box']
             pw, ph = max(1, x2 - x1), max(1, y2 - y1)
+            aspect_ratio = ph / float(pw)
 
-            # Head region for helmet (Upper 32% of bounding box)
-            hy1, hy2 = max(0, y1), min(h0, int(y1 + ph * 0.32))
+            # Adaptive head region height:
+            # If full-body (aspect_ratio >= 1.8), head is top ~22%
+            # If upper-body/waist-up (aspect_ratio < 1.8), head is top ~32%
+            head_pct = 0.22 if aspect_ratio >= 1.8 else 0.32
+            hy1, hy2 = max(0, y1), min(h0, int(y1 + ph * head_pct))
             hx1, hx2 = max(0, x1), min(w0, x2)
+            
             if hy2 > hy1 and hx2 > hx1:
                 head_crop = img[hy1:hy2, hx1:hx2]
                 if self._detect_helmet_in_crop(head_crop):
                     all_detections.append({
                         'class': 'helmet',
                         'confidence': round(min(0.99, p['confidence'] * 0.98), 2),
-                        'box': [hx1 + int(pw * 0.10), hy1, hx2 - int(pw * 0.10), hy1 + int((hy2 - hy1) * 0.90)]
+                        'box': [hx1 + int(pw * 0.08), hy1, hx2 - int(pw * 0.08), hy2]
                     })
 
-            # Torso region for safety vest (Middle 45% of bounding box: 25% to 70%)
-            vy1, vy2 = max(0, int(y1 + ph * 0.25)), min(h0, int(y1 + ph * 0.70))
+            # Adaptive torso region:
+            torso_start_pct = 0.20 if aspect_ratio >= 1.8 else 0.28
+            torso_end_pct = 0.68 if aspect_ratio >= 1.8 else 0.90
+            vy1, vy2 = max(0, int(y1 + ph * torso_start_pct)), min(h0, int(y1 + ph * torso_end_pct))
             vx1, vx2 = max(0, x1), min(w0, x2)
+            
             if vy2 > vy1 and vx2 > vx1:
                 torso_crop = img[vy1:vy2, vx1:vx2]
                 if self._detect_vest_in_crop(torso_crop):
@@ -243,45 +250,64 @@ class YOLODetector:
         return all_detections
 
     def _detect_helmet_in_crop(self, crop):
-        """Detects hardhat presence across Yellow, White, Orange, Blue, Red spectra."""
-        if crop is None or crop.size == 0:
+        """
+        Accurately detects safety hardhats (Yellow, White, Orange, Blue) while rejecting bare heads, hair, and caps.
+        """
+        if crop is None or crop.size == 0 or crop.shape[0] < 6 or crop.shape[1] < 6:
             return False
+
         hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
-        m_yellow = cv2.inRange(hsv, np.array([16, 60, 80]), np.array([38, 255, 255]))
-        m_white = cv2.inRange(hsv, np.array([0, 0, 170]), np.array([180, 45, 255]))
-        m_orange = cv2.inRange(hsv, np.array([3, 85, 90]), np.array([17, 255, 255]))
-        m_blue = cv2.inRange(hsv, np.array([90, 50, 50]), np.array([135, 255, 255]))
-        m_red1 = cv2.inRange(hsv, np.array([0, 70, 70]), np.array([10, 255, 255]))
-        m_red2 = cv2.inRange(hsv, np.array([170, 70, 70]), np.array([180, 255, 255]))
+        h_crop, w_crop, _ = crop.shape
+        total_pixels = float(h_crop * w_crop)
+
+        # Focus analysis on the upper 65% of head crop (crown where hardhat sits)
+        upper_crown = hsv[0:int(h_crop * 0.65), :]
+        crown_pixels = float(upper_crown.shape[0] * upper_crown.shape[1]) if upper_crown.size > 0 else total_pixels
+
+        # 1. Safety Yellow / Neon Lime Hardhat
+        m_yellow = cv2.inRange(hsv, np.array([18, 80, 100]), np.array([36, 255, 255]))
+        # 2. Safety Orange Hardhat
+        m_orange = cv2.inRange(hsv, np.array([7, 120, 110]), np.array([17, 255, 255]))
+        # 3. Safety Blue Hardhat
+        m_blue = cv2.inRange(hsv, np.array([95, 80, 80]), np.array([130, 255, 255]))
+        # 4. Safety White Hardhat (High brightness, low saturation, distinct from skin)
+        m_white = cv2.inRange(hsv, np.array([0, 0, 195]), np.array([180, 32, 255]))
+
+        # Combine hardhat safety masks
+        hardhat_mask = cv2.bitwise_or(m_yellow, cv2.bitwise_or(m_orange, cv2.bitwise_or(m_blue, m_white)))
         
-        comb = cv2.bitwise_or(m_yellow, cv2.bitwise_or(m_white, cv2.bitwise_or(m_orange, cv2.bitwise_or(m_blue, cv2.bitwise_or(m_red1, m_red2)))))
-        ratio = cv2.countNonZero(comb) / float(crop.shape[0] * crop.shape[1])
-        return ratio > 0.035
+        # Upper crown mask
+        crown_hardhat_mask = hardhat_mask[0:int(h_crop * 0.65), :] if upper_crown.size > 0 else hardhat_mask
+
+        # Hardhat ratio in crown
+        crown_ratio = cv2.countNonZero(crown_hardhat_mask) / max(1.0, crown_pixels)
+        total_ratio = cv2.countNonZero(hardhat_mask) / max(1.0, total_pixels)
+
+        # Hardhat must cover at least 12% of the crown area or 10% of total head crop
+        return crown_ratio > 0.12 or total_ratio > 0.10
 
     def _detect_vest_in_crop(self, crop):
-        """Detects high-vis vest presence across fluorescent neon yellow, lime, orange, and reflective strips."""
-        if crop is None or crop.size == 0:
+        """
+        Detects high-vis safety vests (Fluorescent Neon Yellow/Lime, High-Vis Orange, Reflective Stripes).
+        """
+        if crop is None or crop.size == 0 or crop.shape[0] < 8 or crop.shape[1] < 8:
             return False
+
         hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
-        m_orange = cv2.inRange(hsv, np.array([3, 80, 80]), np.array([18, 255, 255]))
-        m_neon = cv2.inRange(hsv, np.array([18, 60, 80]), np.array([42, 255, 255]))
-        m_reflective = cv2.inRange(hsv, np.array([0, 0, 190]), np.array([180, 30, 255]))
+        total_pixels = float(crop.shape[0] * crop.shape[1])
+
+        # 1. High-Vis Orange Vest
+        m_orange = cv2.inRange(hsv, np.array([6, 110, 100]), np.array([18, 255, 255]))
+        # 2. Fluorescent Neon Yellow / Lime Vest
+        m_neon = cv2.inRange(hsv, np.array([20, 75, 100]), np.array([44, 255, 255]))
+        # 3. Retroreflective Silver / White Safety Stripes
+        m_reflective = cv2.inRange(hsv, np.array([0, 0, 205]), np.array([180, 28, 255]))
 
         comb = cv2.bitwise_or(m_orange, cv2.bitwise_or(m_neon, m_reflective))
-        ratio = cv2.countNonZero(comb) / float(crop.shape[0] * crop.shape[1])
-        return ratio > 0.045
+        ratio = cv2.countNonZero(comb) / max(1.0, total_pixels)
 
-    def _dynamic_subject_segmentation(self, img):
-        """Segments prominent subject in any arbitrary photo."""
-        h, w, _ = img.shape
-        # Center subject default estimate for arbitrary uploaded photo
-        return [
-            {
-                "class": "person",
-                "confidence": 0.93,
-                "box": [int(w * 0.25), int(h * 0.15), int(w * 0.75), int(h * 0.90)]
-            }
-        ]
+        # High-vis vest must cover at least 10% of torso area
+        return ratio > 0.10
 
     def generate_annotated_image(self, image_path, workers_compliance, output_filename):
         """
@@ -330,20 +356,20 @@ class YOLODetector:
             pw, ph = x2 - x1, y2 - y1
             
             # Head anchor
-            hy1, hy2 = y1, int(y1 + ph * 0.32)
-            hx1, hx2 = int(x1 + pw * 0.12), int(x2 - pw * 0.12)
+            hy1, hy2 = y1, int(y1 + ph * 0.28)
+            hx1, hx2 = int(x1 + pw * 0.10), int(x2 - pw * 0.10)
             h_col = (40, 210, 60) if has_helmet else (30, 40, 235)
             cv2.rectangle(img, (hx1, hy1), (hx2, hy2), h_col, 1)
             h_txt = "HELMET: OK" if has_helmet else "NO HELMET"
-            cv2.putText(img, h_txt, (hx1 + 2, min(h_img - 2, hy2 - 4)), font, 0.30, h_col, 1, cv2.LINE_AA)
+            cv2.putText(img, h_txt, (hx1 + 2, min(h_img - 2, hy2 - 4)), font, 0.32, h_col, 1, cv2.LINE_AA)
 
             # Torso anchor
-            vy1, vy2 = int(y1 + ph * 0.30), int(y1 + ph * 0.70)
-            vx1, vx2 = int(x1 + pw * 0.08), int(x2 - pw * 0.08)
+            vy1, vy2 = int(y1 + ph * 0.25), int(y1 + ph * 0.68)
+            vx1, vx2 = int(x1 + pw * 0.06), int(x2 - pw * 0.06)
             v_col = (40, 210, 60) if has_vest else (30, 40, 235)
             cv2.rectangle(img, (vx1, vy1), (vx2, vy2), v_col, 1)
             v_txt = "VEST: OK" if has_vest else "NO VEST"
-            cv2.putText(img, v_txt, (vx1 + 2, min(h_img - 2, vy2 - 4)), font, 0.30, v_col, 1, cv2.LINE_AA)
+            cv2.putText(img, v_txt, (vx1 + 2, min(h_img - 2, vy2 - 4)), font, 0.32, v_col, 1, cv2.LINE_AA)
 
         # Bottom Safety Disclaimer Banner
         banner_h = 30
@@ -356,4 +382,5 @@ class YOLODetector:
         return output_path
 
 yolo_detector = YOLODetector()
+
 

@@ -481,7 +481,7 @@ export default function PPESafetyPage({ selectedProject }) {
               </span>
             </div>
 
-            <div className="space-y-2.5 font-mono text-xs max-h-[250px] overflow-y-auto">
+            <div className="space-y-2.5 font-mono text-xs max-h-[360px] overflow-y-auto pr-1">
               {activeWorkers.map((w) => {
                 const isCompliant = w.decision_status === 'compliant';
                 const isSelected = selectedWorkerId === w.anonymous_worker_id;
