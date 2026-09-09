@@ -1,0 +1,17 @@
+# BuildSure AI — Example Dataset Configuration for YOLO PPE Detection
+# Replace the dataset root path with your local or Colab absolute dataset path.
+
+path: ./datasets/construction-ppe-dataset  # dataset root directory
+train: images/train                       # train images (relative to 'path')
+val: images/val                           # val images (relative to 'path')
+test: images/test                         # test images (optional, relative to 'path')
+
+# Classes dictionary
+# Target Standard Schema for BuildSure AI:
+# 0: person
+# 1: hard_hat
+# 2: safety_vest
+names:
+  0: person
+  1: hard_hat
+  2: safety_vest

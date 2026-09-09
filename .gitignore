@@ -18,6 +18,15 @@ venv/
 *.db
 *.sqlite3
 *.pt
+*.onnx
+backend/models/*.pt
+backend/models/*.onnx
+
+# Training Datasets & YOLO Experiment Artifacts
+datasets/
+runs/
+validation/
+training_runs/
 
 # Uploads and temporary inference results
 backend/uploads/*

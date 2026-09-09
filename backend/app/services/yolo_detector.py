@@ -5,14 +5,42 @@ import numpy as np
 from PIL import Image
 from app.config import settings
 
+def normalize_class_name(raw_name: str) -> str:
+    """
+    Robust case-insensitive class name normalizer.
+    Converts to lowercase, trims whitespace, and standardizes hyphens/spaces to underscores.
+    Normalizes aliases:
+      - helmet / hardhat / hard_hat / hard-hat -> hard_hat
+      - vest / safety vest / safety_vest / safety-vest / reflective_vest -> safety_vest
+      - person / worker -> person
+    """
+    clean = str(raw_name).strip().lower().replace("-", "_").replace(" ", "_")
+    
+    # Hard Hat Aliases
+    if clean in ["helmet", "hardhat", "hard_hat", "safety_helmet", "hard_hats", "helmets"]:
+        return "hard_hat"
+    
+    # Safety Vest Aliases
+    if clean in [
+        "vest", "safety_vest", "reflective_vest", "high_vis_vest",
+        "hi_vis_vest", "safety_vests", "vests", "reflective_safety_vest"
+    ]:
+        return "safety_vest"
+    
+    # Person Aliases
+    if clean in ["person", "worker", "human", "people", "persons", "workers", "subject"]:
+        return "person"
+    
+    return clean
+
+
 class YOLODetector:
     """
-    BuildSure AI — Universal YOLOv8 + OpenCV Computer Vision Detection Service
-    Performs precise real-time detection on ANY uploaded construction image:
-    - Neural YOLOv8 (PyTorch / ONNX) worker & person detection with high spatial precision
-    - Multi-Spectral Color & Texture Hardhat Analysis (Yellow, White, Orange, Blue)
-    - High-Visibility Safety Vest Detection (Fluorescent Lime, Orange, Reflective Stripes)
-    - Generates high-res annotated OpenCV images with color-coded bounding boxes.
+    BuildSure AI — Universal YOLO + OpenCV Computer Vision Detection Service
+    Supports:
+    - Mode 1: Native PPE Fine-Tuned YOLO Model (person, hard_hat, safety_vest directly from weights)
+    - Mode 2: General COCO YOLOv8n + OpenCV Color/Spatial Heuristic Fallback
+    - Mode 3: Model Unavailable Mode (Graceful OpenCV HOG/Cascade Fallback)
     """
 
     def __init__(self):
@@ -21,6 +49,8 @@ class YOLODetector:
         self.ultralytics_model = None
         self.onnx_session = None
         self.hog = None
+        self.model_mode = "model_unavailable"
+        self.model_mode_description = "No neural model loaded. Using OpenCV fallback."
         self._load_model()
         self._load_hog()
         self._load_cascades()
@@ -30,8 +60,11 @@ class YOLODetector:
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         candidate_paths = [
             self.model_path,
+            os.path.join(base_dir, "models", "best.pt"),
+            os.path.join(base_dir, "backend", "models", "best.pt"),
             os.path.join(base_dir, "yolov8n.pt"),
             os.path.join(base_dir, "backend", "yolov8n.pt"),
+            "backend/models/best.pt",
             "backend/yolov8n.pt",
             "yolov8n.pt"
         ]
@@ -49,7 +82,11 @@ class YOLODetector:
             if not loaded:
                 # Let ultralytics load or auto-download yolov8n.pt
                 self.ultralytics_model = YOLO("yolov8n.pt")
-                print("[YOLODetector] Successfully initialized YOLO model 'yolov8n.pt'.")
+                print("[YOLODetector] Successfully initialized default YOLO model 'yolov8n.pt'.")
+                loaded = True
+
+            if loaded and self.ultralytics_model is not None:
+                self._classify_model_mode()
                 return
         except Exception as e:
             print(f"[YOLODetector] Ultralytics load note: {e}")
@@ -69,12 +106,44 @@ class YOLODetector:
                 if os.path.exists(candidate):
                     self.onnx_session = ort.InferenceSession(candidate, providers=['CPUExecutionProvider'])
                     self.onnx_input_name = self.onnx_session.get_inputs()[0].name
+                    self.model_mode = "coco_heuristic_fallback"
+                    self.model_mode_description = "Fallback heuristic mode — ONNX COCO YOLO model active."
                     print(f"[YOLODetector] Successfully loaded ONNX YOLO model from '{candidate}'.")
                     return
         except Exception as e:
             print(f"[YOLODetector] ONNX load note: {e}")
 
-        print("[YOLODetector] Initialized Computer Vision Detection Service.")
+        self.model_mode = "model_unavailable"
+        self.model_mode_description = "No neural model loaded. Using OpenCV fallback."
+        print("[YOLODetector] Operating in OpenCV Computer Vision Fallback Mode.")
+
+    def _classify_model_mode(self):
+        """Inspects model class names to determine whether native PPE mode or fallback mode is active."""
+        if self.ultralytics_model is None:
+            self.model_mode = "model_unavailable"
+            self.model_mode_description = "No neural model loaded. Using OpenCV fallback."
+            return
+
+        raw_names = getattr(self.ultralytics_model, 'names', {})
+        if isinstance(raw_names, dict):
+            norm_classes = {normalize_class_name(v) for v in raw_names.values()}
+        elif isinstance(raw_names, (list, tuple)):
+            norm_classes = {normalize_class_name(v) for v in raw_names}
+        else:
+            norm_classes = set()
+
+        has_person = "person" in norm_classes
+        has_hardhat = "hard_hat" in norm_classes
+        has_vest = "safety_vest" in norm_classes
+
+        if has_person and has_hardhat and has_vest:
+            self.model_mode = "ppe_fine_tuned"
+            self.model_mode_description = "Native PPE Fine-Tuned YOLO Model Active."
+            print(f"[YOLODetector] Mode: {self.model_mode} — Full native PPE neural detection enabled.")
+        else:
+            self.model_mode = "coco_heuristic_fallback"
+            self.model_mode_description = "Fallback heuristic mode — PPE-trained YOLO model not configured."
+            print(f"[YOLODetector] Mode: {self.model_mode} — General person detection with OpenCV PPE heuristic fallback.")
 
     def _load_hog(self):
         try:
@@ -110,42 +179,83 @@ class YOLODetector:
 
     def detect_objects(self, image_path):
         """
-        Runs comprehensive multi-strategy worker + PPE detection on ANY uploaded image.
-        Detects all workers even in crowded scenes, distant shots, or behind scaffolding/rebar.
-        Returns list of detections: [{"class": str, "confidence": float, "box": [x1, y1, x2, y2]}]
+        Runs object detection on ANY uploaded image.
+        Returns exact backward-compatible schema:
+        [
+            {
+                "class": str,          # "person", "hard_hat", or "safety_vest"
+                "confidence": float,
+                "box": [x1, y1, x2, y2]
+            }
+        ]
         """
         img = cv2.imread(image_path)
         if img is None:
             return []
 
         h0, w0, _ = img.shape
-        raw_persons = []
 
-        # Tier 1: Neural Network YOLO (High-resolution multi-scale inference for crowded/occluded scenes)
-        if self.ultralytics_model is not None:
+        # =====================================================================
+        # MODE 1: NATIVE PPE FINE-TUNED YOLO MODEL MODE
+        # =====================================================================
+        if self.model_mode == "ppe_fine_tuned" and self.ultralytics_model is not None:
             try:
-                # Use higher inference resolution (1024) to resolve distant and partially occluded workers
                 imgsz = 1024 if max(w0, h0) >= 1000 else 640
                 results = self.ultralytics_model(
                     image_path,
-                    conf=0.10,          # Lower confidence floor to catch occluded workers behind rebar/scaffolding
-                    iou=0.60,           # Allow adjacent workers standing side-by-side
+                    conf=0.15,
+                    iou=0.60,
+                    imgsz=imgsz,
+                    verbose=False
+                )
+                native_detections = []
+                for r in results:
+                    for box in r.boxes:
+                        cls_id = int(box.cls[0])
+                        raw_class = self.ultralytics_model.names.get(cls_id, f"class_{cls_id}")
+                        norm_class = normalize_class_name(raw_class)
+                        conf = float(box.conf[0])
+                        xyxy = box.xyxy[0].cpu().numpy().tolist()
+                        x1, y1, x2, y2 = [int(v) for v in xyxy]
+
+                        if norm_class in ["person", "hard_hat", "safety_vest"]:
+                            native_detections.append({
+                                "class": norm_class,
+                                "confidence": round(conf, 2),
+                                "box": [max(0, x1), max(0, y1), min(w0, x2), min(h0, y2)]
+                            })
+
+                if native_detections:
+                    return native_detections
+            except Exception as err:
+                print(f"[YOLODetector] Native PPE inference exception: {err}")
+
+        # =====================================================================
+        # MODE 2: GENERAL COCO YOLO + OPENCV HEURISTIC FALLBACK MODE
+        # =====================================================================
+        raw_persons = []
+        if self.ultralytics_model is not None:
+            try:
+                imgsz = 1024 if max(w0, h0) >= 1000 else 640
+                results = self.ultralytics_model(
+                    image_path,
+                    conf=0.10,
+                    iou=0.60,
                     imgsz=imgsz,
                     verbose=False
                 )
                 for r in results:
                     for box in r.boxes:
                         cls_id = int(box.cls[0])
-                        class_name = self.ultralytics_model.names.get(cls_id, f"class_{cls_id}").lower()
+                        raw_class = self.ultralytics_model.names.get(cls_id, f"class_{cls_id}")
+                        norm_class = normalize_class_name(raw_class)
                         conf = float(box.conf[0])
                         xyxy = box.xyxy[0].cpu().numpy().tolist()
                         x1, y1, x2, y2 = [int(v) for v in xyxy]
-                        
-                        # Filter for real person/worker detections with valid minimum dimensions
-                        if class_name in ["person", "worker"]:
+
+                        if norm_class == "person":
                             bw = x2 - x1
                             bh = y2 - y1
-                            # Minimum 12px width & 18px height (allows full-body, upper-body, and distant workers)
                             if bw >= 12 and bh >= 18:
                                 raw_persons.append({
                                     'box': [max(0, x1), max(0, y1), min(w0, x2), min(h0, y2)],
@@ -192,7 +302,7 @@ class YOLODetector:
                     py2 = min(h0, uy + int(uh * 2.2))
                     raw_persons.append({'box': [ux, uy, ux + uw, py2], 'confidence': 0.82})
 
-        # Deduplicate persons via Non-Maximum Suppression (NMS) with relaxed overlap (0.65) to keep side-by-side workers
+        # Deduplicate persons via Non-Maximum Suppression (NMS)
         unique_persons = []
         if raw_persons:
             boxes = [p['box'] for p in raw_persons]
@@ -206,38 +316,36 @@ class YOLODetector:
                     'box': boxes[i]
                 })
 
-        # Sort workers spatially from left to right (x1 ascending) for organized telemetry
+        # Sort workers spatially from left to right (x1 ascending)
         unique_persons.sort(key=lambda p: p['box'][0])
 
-        # Step 4: Detect and strictly calibrate Helmet and Safety Vest for each detected worker
+        # Execute Calibrated Fallback OpenCV Spectroscopy on head and torso crops
         all_detections = list(unique_persons)
         for p in unique_persons:
             x1, y1, x2, y2 = p['box']
             pw, ph = max(1, x2 - x1), max(1, y2 - y1)
             aspect_ratio = ph / float(pw)
 
-            # Adaptive head region height:
-            # If full-body (aspect_ratio >= 1.8), head is top ~22%
-            # If upper-body/waist-up (aspect_ratio < 1.8), head is top ~32%
+            # Adaptive head region height
             head_pct = 0.22 if aspect_ratio >= 1.8 else 0.32
             hy1, hy2 = max(0, y1), min(h0, int(y1 + ph * head_pct))
             hx1, hx2 = max(0, x1), min(w0, x2)
-            
+
             if hy2 > hy1 and hx2 > hx1:
                 head_crop = img[hy1:hy2, hx1:hx2]
                 if self._detect_helmet_in_crop(head_crop):
                     all_detections.append({
-                        'class': 'helmet',
+                        'class': 'hard_hat',
                         'confidence': round(min(0.99, p['confidence'] * 0.98), 2),
                         'box': [hx1 + int(pw * 0.08), hy1, hx2 - int(pw * 0.08), hy2]
                     })
 
-            # Adaptive torso region:
+            # Adaptive torso region
             torso_start_pct = 0.20 if aspect_ratio >= 1.8 else 0.28
             torso_end_pct = 0.68 if aspect_ratio >= 1.8 else 0.90
             vy1, vy2 = max(0, int(y1 + ph * torso_start_pct)), min(h0, int(y1 + ph * torso_end_pct))
             vx1, vx2 = max(0, x1), min(w0, x2)
-            
+
             if vy2 > vy1 and vx2 > vx1:
                 torso_crop = img[vy1:vy2, vx1:vx2]
                 if self._detect_vest_in_crop(torso_crop):
@@ -250,9 +358,7 @@ class YOLODetector:
         return all_detections
 
     def _detect_helmet_in_crop(self, crop):
-        """
-        Accurately detects safety hardhats (Yellow, White, Orange, Blue) while rejecting bare heads, hair, and caps.
-        """
+        """Accurately detects safety hardhats while rejecting bare heads, hair, and caps."""
         if crop is None or crop.size == 0 or crop.shape[0] < 6 or crop.shape[1] < 6:
             return False
 
@@ -260,7 +366,6 @@ class YOLODetector:
         h_crop, w_crop, _ = crop.shape
         total_pixels = float(h_crop * w_crop)
 
-        # Focus analysis on the upper 65% of head crop (crown where hardhat sits)
         upper_crown = hsv[0:int(h_crop * 0.65), :]
         crown_pixels = float(upper_crown.shape[0] * upper_crown.shape[1]) if upper_crown.size > 0 else total_pixels
 
@@ -273,23 +378,16 @@ class YOLODetector:
         # 4. Safety White Hardhat (High brightness, low saturation, distinct from skin)
         m_white = cv2.inRange(hsv, np.array([0, 0, 195]), np.array([180, 32, 255]))
 
-        # Combine hardhat safety masks
         hardhat_mask = cv2.bitwise_or(m_yellow, cv2.bitwise_or(m_orange, cv2.bitwise_or(m_blue, m_white)))
-        
-        # Upper crown mask
         crown_hardhat_mask = hardhat_mask[0:int(h_crop * 0.65), :] if upper_crown.size > 0 else hardhat_mask
 
-        # Hardhat ratio in crown
         crown_ratio = cv2.countNonZero(crown_hardhat_mask) / max(1.0, crown_pixels)
         total_ratio = cv2.countNonZero(hardhat_mask) / max(1.0, total_pixels)
 
-        # Hardhat must cover at least 12% of the crown area or 10% of total head crop
         return crown_ratio > 0.12 or total_ratio > 0.10
 
     def _detect_vest_in_crop(self, crop):
-        """
-        Detects high-vis safety vests (Fluorescent Neon Yellow/Lime, High-Vis Orange, Reflective Stripes).
-        """
+        """Detects high-vis safety vests."""
         if crop is None or crop.size == 0 or crop.shape[0] < 8 or crop.shape[1] < 8:
             return False
 
@@ -306,17 +404,10 @@ class YOLODetector:
         comb = cv2.bitwise_or(m_orange, cv2.bitwise_or(m_neon, m_reflective))
         ratio = cv2.countNonZero(comb) / max(1.0, total_pixels)
 
-        # High-vis vest must cover at least 10% of torso area
         return ratio > 0.10
 
     def generate_annotated_image(self, image_path, workers_compliance, output_filename):
-        """
-        Draws calibrated bounding boxes and tactical HUD overlays on the image:
-        - Green box for compliant worker
-        - Yellow box for needs human review
-        - Red box for confirmed PPE violation
-        - Head and torso sub-anchors for clear spatial visual proof
-        """
+        """Draws calibrated bounding boxes and tactical HUD overlays on the image."""
         img = cv2.imread(image_path)
         if img is None:
             return None
@@ -350,7 +441,10 @@ class YOLODetector:
             text_size = cv2.getTextSize(label, font, 0.45, 1)[0]
             bg_y1 = max(0, y1 - 22)
             cv2.rectangle(img, (x1, bg_y1), (min(w_img, x1 + text_size[0] + 12), y1), color, -1)
-            cv2.putText(img, label, (x1 + 6, max(12, y1 - 6)), font, 0.45, (0, 0, 0) if status == "compliant" else (255, 255, 255), 1, cv2.LINE_AA)
+            cv2.putText(
+                img, label, (x1 + 6, max(12, y1 - 6)), font, 0.45,
+                (0, 0, 0) if status == "compliant" else (255, 255, 255), 1, cv2.LINE_AA
+            )
 
             # 3. Head & Torso Sub-Anchors
             pw, ph = x2 - x1, y2 - y1
@@ -371,16 +465,21 @@ class YOLODetector:
             v_txt = "VEST: OK" if has_vest else "NO VEST"
             cv2.putText(img, v_txt, (vx1 + 2, min(h_img - 2, vy2 - 4)), font, 0.32, v_col, 1, cv2.LINE_AA)
 
-        # Bottom Safety Disclaimer Banner
+        # Bottom Safety Disclaimer Banner with Mode Tag
         banner_h = 30
         cv2.rectangle(img, (0, h_img - banner_h), (w_img, h_img), (15, 20, 25), -1)
-        cv2.putText(img, "BuildSure AI YOLO v8x Vision Overlay | Automated OSHA PPE Verification Engine",
-                    (15, h_img - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.40, (0, 220, 255), 1, cv2.LINE_AA)
+        mode_tag = "NATIVE PPE YOLO" if self.model_mode == "ppe_fine_tuned" else "YOLO + OPENCV FALLBACK"
+        cv2.putText(
+            img, f"BuildSure AI Vision Engine [{mode_tag}] | Automated OSHA PPE Verification",
+            (15, h_img - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.38, (0, 220, 255), 1, cv2.LINE_AA
+        )
 
         output_path = os.path.join(settings.RESULTS_DIR, output_filename)
         cv2.imwrite(output_path, img)
         return output_path
 
+
 yolo_detector = YOLODetector()
+
 
 

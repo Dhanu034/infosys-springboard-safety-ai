@@ -5,21 +5,27 @@
 
 ---
 
-## 📊 1. Model & Evaluation Performance Metrics
+## 📊 1. Model Status & Benchmark Target Metrics
 
-The **Safety Intelligence Engine** utilizes an **Ultralytics YOLO** deep neural network combined with the autonomous **SafetyAgent** spatial rule engine to detect construction workers, safety helmets, and high-visibility safety vests.
+- **Current Operating Mode**: `YOLOv8n person detection + OpenCV PPE heuristic fallback`
+- **Validation Status**: `Not yet measured on a held-out labelled PPE test set.`
+- **Target Classes**: `0: person`, `1: hard_hat`, `2: safety_vest`
 
-### Quantitative Metrics Summary
+### Proposed Target Benchmarks vs. Status
 
-| Evaluation Metric | Score / Benchmark | Target Requirement | Status |
-| :--- | :---: | :---: | :---: |
-| **Precision (Worker Detection)** | `94.2%` | $\ge 90.0\%$ | ✅ Passed |
-| **Recall (Worker Detection)** | `92.8%` | $\ge 90.0\%$ | ✅ Passed |
-| **mAP@50 (Overall PPE)** | `91.5%` | $\ge 85.0\%$ | ✅ Passed |
-| **mAP@50-95** | `72.4%` | $\ge 65.0\%$ | ✅ Passed |
-| **F1-Score (Combined)** | `0.935` | $\ge 0.880$ | ✅ Passed |
-| **Avg Inference Speed (GPU)** | `18.4 ms / frame` | $< 50\text{ ms}$ | ✅ Passed |
-| **Avg Inference Speed (CPU)** | `142.0 ms / frame` | $< 300\text{ ms}$ | ✅ Passed |
+> **Note:** The values below represent proposed target benchmarks for a future fine-tuned PPE detector, not measured results on a held-out test split.
+
+| Evaluation Metric | Proposed Target Benchmark | Current Status |
+| :--- | :---: | :---: |
+| **Precision (P)** | $\ge 85.0\%$ | ⏳ Target (Pending held-out test evaluation) |
+| **Recall (R)** | $\ge 80.0\%$ | ⏳ Target (Pending held-out test evaluation) |
+| **mAP@50** | $\ge 80.0\%$ | ⏳ Target (Pending held-out test evaluation) |
+| **mAP@50-95** | $\ge 55.0\%$ | ⏳ Target (Pending held-out test evaluation) |
+| **F1-Score** | $\ge 0.820$ | ⏳ Target (Pending held-out test evaluation) |
+| **Inference Latency (GPU)** | $< 50\text{ ms / frame}$ | ⏳ Target |
+| **Inference Latency (CPU)** | $< 300\text{ ms / frame}$ | ⏳ Target |
+
+*For procedures to fine-tune and benchmark a dedicated PPE model, refer to [docs/ppe-model-training.md](file:///c:/Users/Dhanusri/Downloads/Infosys/infosys-springboard-safety-ai/docs/ppe-model-training.md) and [docs/ppe-model-validation.md](file:///c:/Users/Dhanusri/Downloads/Infosys/infosys-springboard-safety-ai/docs/ppe-model-validation.md).*
 
 ---
 

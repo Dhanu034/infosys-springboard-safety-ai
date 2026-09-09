@@ -55,9 +55,12 @@ class SafetyAgent:
         requires_harness = zone_info["harness"]
         zone_multiplier = zone_info["multiplier"]
 
-        persons = [d for d in detections if d["class"].lower() in ["person", "worker"]]
-        helmets = [d for d in detections if d["class"].lower() in ["helmet", "safety_helmet", "hat"]]
-        vests = [d for d in detections if d["class"].lower() in ["vest", "safety_vest", "high_vis_vest"]]
+        def normalize_label(val):
+            return str(val).strip().lower().replace("-", "_").replace(" ", "_")
+
+        persons = [d for d in detections if normalize_label(d.get("class", "")) in ["person", "worker", "human", "people", "persons", "workers", "subject"]]
+        helmets = [d for d in detections if normalize_label(d.get("class", "")) in ["hard_hat", "helmet", "hardhat", "safety_helmet", "hat", "hard_hats", "helmets"]]
+        vests = [d for d in detections if normalize_label(d.get("class", "")) in ["safety_vest", "vest", "reflective_vest", "high_vis_vest", "hi_vis_vest", "safety_vests", "vests"]]
 
         workers_compliance = []
         violations = []
