@@ -29,18 +29,18 @@
 
 ---
 
-## 🎯 2. Spatial Spatial PPE Association Heuristic
+## 🎯 2. Spatial PPE Association Heuristic
 
 Rather than assuming all workers are compliant if a helmet or vest exists anywhere in the image frame, `SafetyAgent` applies **spatial geometric region matching**:
 
 1. **Head Region Matching**:
-   - Computes the upper $35\%$ of each detected worker's bounding box:
-     $$\text{Head Box} = [x_1, y_1, x_2, y_1 + 0.35 \times \text{height}]$$
-   - A detected helmet is associated **only** if its center coordinate $(h_{cx}, h_{cy})$ falls inside or within a $15\%$ tolerance of this head region.
+   - Computes the upper $28\%$ of each detected worker's bounding box:
+     $$\text{Head Box} = [x_1, y_1, x_2, y_1 + 0.28 \times \text{height}]$$
+   - A detected helmet is associated **only** if its center coordinate $(h_{cx}, h_{cy})$ falls inside or within a tolerance of this head region.
 
 2. **Torso Region Matching**:
-   - Computes the middle $40\%$ of each detected worker's bounding box:
-     $$\text{Torso Box} = [x_1, y_1 + 0.20 \times \text{height}, x_2, y_1 + 0.70 \times \text{height}]$$
+   - Computes the middle region of each detected worker's bounding box:
+     $$\text{Torso Box} = [x_1, y_1 + 0.25 \times \text{height}, x_2, y_1 + 0.68 \times \text{height}]$$
    - A detected safety vest is associated **only** if its center coordinate $(v_{cx}, v_{cy})$ falls inside this torso region.
 
 3. **Low-Confidence Filter**:

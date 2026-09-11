@@ -7,6 +7,7 @@ import {
   BellRing,
   Bot,
   ShieldCheck,
+  ShieldAlert,
   FileText,
   Settings,
   HelpCircle,
@@ -26,9 +27,11 @@ export default function SideNavBar({ activeTab, setActiveTab }) {
     { id: 'SAFETY_ALERTS', label: 'Alert Center', icon: BellRing },
     { id: 'AGENT_NETWORK', label: 'Agent Network', icon: Bot },
     { id: 'COMPLIANCE', label: 'Compliance', icon: ShieldCheck },
+    { id: 'INSURANCE', label: 'Insurance', icon: ShieldAlert },
     { id: 'REPORTS', label: 'Reports', icon: FileText },
     { id: 'SETTINGS', label: 'Settings', icon: Settings },
   ];
+
 
   return (
     <nav className="bg-[#101415]/95 backdrop-blur-xl h-screen w-64 fixed left-0 top-0 border-r border-[#3c494c]/30 shadow-2xl flex flex-col justify-between py-6 z-50 select-none">

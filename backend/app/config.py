@@ -18,9 +18,14 @@ class Settings:
 
     UPLOAD_DIR: str = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads")
     RESULTS_DIR: str = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "results")
+    DOCUMENTS_DIR: str = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "documents")
+    MAX_DOCUMENT_SIZE_MB: int = int(os.getenv("MAX_DOCUMENT_SIZE_MB", "15"))
+    TESSERACT_CMD_PATH: str = os.getenv("TESSERACT_CMD_PATH", r"C:\Program Files\Tesseract-OCR\tesseract.exe")
 
 settings = Settings()
 
-# Ensure uploads and results directories exist
+# Ensure uploads, results, and documents directories exist
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 os.makedirs(settings.RESULTS_DIR, exist_ok=True)
+os.makedirs(settings.DOCUMENTS_DIR, exist_ok=True)
+

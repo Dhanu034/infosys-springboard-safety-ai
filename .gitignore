@@ -1,49 +1,44 @@
-# Dependencies
+# Node dependencies & build artifacts
 node_modules/
-
-# Production build
 dist/
+.vite/
 
-# Python & Virtual Environments
-__pycache__/
-*.pyc
+# Python virtual environment & bytecode
 venv/
 .venv/
+__pycache__/
+*.pyc
+*.pyo
 
-# Environment variables & secrets
-.env
-!.env.example
-
-# SQLite Database & Model Weights
+# Database files
 *.db
+*.sqlite
 *.sqlite3
+*.db-journal
+
+# Model weights
 *.pt
 *.onnx
-backend/models/*.pt
-backend/models/*.onnx
+*.weights
 
-# Training Datasets & YOLO Experiment Artifacts
+# Training & validation datasets / outputs
 datasets/
 runs/
-validation/
 training_runs/
+validation/
 
-# Uploads and temporary inference results
-backend/uploads/*
-!backend/uploads/.gitkeep
-backend/results/*
-!backend/results/.gitkeep
+# File uploads, documents, results
+backend/uploads/
+backend/results/
+backend/documents/
+uploads/
+results/
+documents/
 
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# Environment configurations & secrets
+.env
+.env.*
+!.env.example
 
-# OS metadata
-.DS_Store
-Thumbs.db
-
-# IDE settings
+# Editor configurations
 .vscode/
-.idea/

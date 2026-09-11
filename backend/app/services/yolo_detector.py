@@ -358,53 +358,79 @@ class YOLODetector:
         return all_detections
 
     def _detect_helmet_in_crop(self, crop):
-        """Accurately detects safety hardhats while rejecting bare heads, hair, and caps."""
-        if crop is None or crop.size == 0 or crop.shape[0] < 6 or crop.shape[1] < 6:
+        """
+        Accurately detects safety hardhats (Yellow, Neon Lime, Orange, White).
+        Rejects bare heads, hair, skin, and background scaffolding/sky.
+        """
+        if crop is None or crop.size == 0 or crop.shape[0] < 8 or crop.shape[1] < 8:
             return False
 
-        hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
         h_crop, w_crop, _ = crop.shape
-        total_pixels = float(h_crop * w_crop)
+        # Focus strictly on the top crown region (top 75% of head crop, inner 80% width)
+        crown_h = int(h_crop * 0.75)
+        cw_start, cw_end = int(w_crop * 0.10), int(w_crop * 0.90)
+        crown = crop[0:crown_h, cw_start:cw_end] if cw_end > cw_start else crop[0:crown_h, :]
+        hsv = cv2.cvtColor(crown, cv2.COLOR_BGR2HSV)
+        total_pixels = float(crown.shape[0] * crown.shape[1])
+        if total_pixels == 0:
+            return False
 
-        upper_crown = hsv[0:int(h_crop * 0.65), :]
-        crown_pixels = float(upper_crown.shape[0] * upper_crown.shape[1]) if upper_crown.size > 0 else total_pixels
+        # 1. Safety Yellow / Fluorescent Neon Lime Hardhat (Vibrant & Saturated)
+        m_yellow = cv2.inRange(hsv, np.array([21, 90, 105]), np.array([42, 255, 255]))
+        
+        # 2. Safety Fluorescent Orange Hardhat (Deep orange, strictly above natural skin saturation)
+        m_orange = cv2.inRange(hsv, np.array([8, 145, 135]), np.array([19, 255, 255]))
+        
+        # 3. Safety White Hardhat (Bright, concentrated dome in center crown)
+        center_w_start, center_w_end = int(crown.shape[1] * 0.15), int(crown.shape[1] * 0.85)
+        center_hsv = hsv[:, center_w_start:center_w_end] if center_w_end > center_w_start else hsv
+        center_pixels = float(max(1, center_hsv.shape[0] * center_hsv.shape[1]))
+        m_white = cv2.inRange(center_hsv, np.array([0, 0, 220]), np.array([180, 25, 255]))
 
-        # 1. Safety Yellow / Neon Lime Hardhat
-        m_yellow = cv2.inRange(hsv, np.array([18, 80, 100]), np.array([36, 255, 255]))
-        # 2. Safety Orange Hardhat
-        m_orange = cv2.inRange(hsv, np.array([7, 120, 110]), np.array([17, 255, 255]))
-        # 3. Safety Blue Hardhat
-        m_blue = cv2.inRange(hsv, np.array([95, 80, 80]), np.array([130, 255, 255]))
-        # 4. Safety White Hardhat (High brightness, low saturation, distinct from skin)
-        m_white = cv2.inRange(hsv, np.array([0, 0, 195]), np.array([180, 32, 255]))
+        yellow_cnt = cv2.countNonZero(m_yellow)
+        orange_cnt = cv2.countNonZero(m_orange)
+        white_cnt = cv2.countNonZero(m_white)
 
-        hardhat_mask = cv2.bitwise_or(m_yellow, cv2.bitwise_or(m_orange, cv2.bitwise_or(m_blue, m_white)))
-        crown_hardhat_mask = hardhat_mask[0:int(h_crop * 0.65), :] if upper_crown.size > 0 else hardhat_mask
+        yellow_ratio = yellow_cnt / total_pixels
+        orange_ratio = orange_cnt / total_pixels
+        white_ratio = white_cnt / center_pixels
 
-        crown_ratio = cv2.countNonZero(crown_hardhat_mask) / max(1.0, crown_pixels)
-        total_ratio = cv2.countNonZero(hardhat_mask) / max(1.0, total_pixels)
+        # Strict checks: require significant solid crown coverage (at least 7.5% for yellow, 8.5% for orange, 12% for white)
+        if yellow_ratio >= 0.075 and yellow_cnt >= 80:
+            return True
+        if orange_ratio >= 0.085 and orange_cnt >= 90:
+            return True
+        if white_ratio >= 0.12 and white_cnt >= 120:
+            return True
 
-        return crown_ratio > 0.12 or total_ratio > 0.10
+        return False
 
     def _detect_vest_in_crop(self, crop):
-        """Detects high-vis safety vests."""
-        if crop is None or crop.size == 0 or crop.shape[0] < 8 or crop.shape[1] < 8:
+        """
+        Detects high-vis fluorescent safety vests (Neon Lime/Yellow and Safety Orange).
+        Rejects ordinary clothing, background steel, and unvested shirts.
+        """
+        if crop is None or crop.size == 0 or crop.shape[0] < 12 or crop.shape[1] < 12:
             return False
 
         hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
         total_pixels = float(crop.shape[0] * crop.shape[1])
+        if total_pixels == 0:
+            return False
 
-        # 1. High-Vis Orange Vest
-        m_orange = cv2.inRange(hsv, np.array([6, 110, 100]), np.array([18, 255, 255]))
-        # 2. Fluorescent Neon Yellow / Lime Vest
-        m_neon = cv2.inRange(hsv, np.array([20, 75, 100]), np.array([44, 255, 255]))
-        # 3. Retroreflective Silver / White Safety Stripes
-        m_reflective = cv2.inRange(hsv, np.array([0, 0, 205]), np.array([180, 28, 255]))
+        # 1. Fluorescent Neon Lime / High-Vis Yellow Vest
+        m_neon = cv2.inRange(hsv, np.array([22, 85, 100]), np.array([45, 255, 255]))
+        
+        # 2. High-Vis Fluorescent Orange Vest
+        m_orange = cv2.inRange(hsv, np.array([7, 125, 115]), np.array([18, 255, 255]))
 
-        comb = cv2.bitwise_or(m_orange, cv2.bitwise_or(m_neon, m_reflective))
-        ratio = cv2.countNonZero(comb) / max(1.0, total_pixels)
+        neon_cnt = cv2.countNonZero(m_neon)
+        orange_cnt = cv2.countNonZero(m_orange)
+        
+        combined_ratio = (neon_cnt + orange_cnt) / total_pixels
 
-        return ratio > 0.10
+        # High-vis vest must occupy at least 14% of the torso bounding crop
+        return combined_ratio >= 0.14
 
     def generate_annotated_image(self, image_path, workers_compliance, output_filename):
         """Draws calibrated bounding boxes and tactical HUD overlays on the image."""
@@ -480,6 +506,3 @@ class YOLODetector:
 
 
 yolo_detector = YOLODetector()
-
-
-

@@ -13,6 +13,8 @@ import SafetyDashboardPage from './components/pages/SafetyDashboardPage';
 import AlertCenterPage from './components/pages/AlertCenterPage';
 import AgentNetworkPage from './components/pages/AgentNetworkPage';
 import ExecutiveReportsPage from './components/pages/ExecutiveReportsPage';
+import CompliancePage from './components/pages/CompliancePage';
+import InsurancePage from './components/pages/InsurancePage';
 
 // Agent Reasoning Drawer
 import AgentReasoningDrawer from './components/AgentReasoningDrawer';
@@ -163,18 +165,23 @@ export default function App() {
 
         {/* Tab 7: Compliance */}
         {activeTab === 'COMPLIANCE' && (
-          <div className="glass-panel p-8 rounded-2xl border border-cyan-500/30 text-center space-y-3">
-            <h3 className="text-lg font-bold text-[#e0e3e5] font-sans">Compliance & Regulatory Intelligence</h3>
-            <p className="text-xs font-mono text-[#859397]">
-              Milestone 3 OSHA 1926 automated regulatory checking module.
-            </p>
-          </div>
+          <CompliancePage
+            selectedProject={selectedProject}
+          />
         )}
 
-        {/* Tab 8: Reports (Image 2 Right) */}
+        {/* Tab 8: Insurance */}
+        {activeTab === 'INSURANCE' && (
+          <InsurancePage
+            selectedProject={selectedProject}
+          />
+        )}
+
+        {/* Tab 9: Reports (Image 2 Right) */}
         {activeTab === 'REPORTS' && (
           <ExecutiveReportsPage />
         )}
+
 
         {/* Tab 9: Settings / Support */}
         {(activeTab === 'SETTINGS' || activeTab === 'SUPPORT') && (

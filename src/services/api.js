@@ -115,3 +115,144 @@ export async function retryAlertAutomation(alertId) {
   }
   return await res.json();
 }
+
+// =====================================================================
+// Milestone 3: Compliance Intelligence API Helpers
+// =====================================================================
+
+export async function uploadComplianceDocument(file, projectId = "PRJ-101", documentCategory = "site_safety_plan") {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("project_id", projectId);
+  formData.append("document_category", documentCategory);
+
+  const res = await fetch(`${API_BASE_URL}/api/compliance/documents/upload`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.detail || `Upload failed with HTTP ${res.status}`);
+  }
+  return await res.json();
+}
+
+export async function fetchComplianceDocuments(projectId = "PRJ-101", category = null) {
+  const params = new URLSearchParams({ project_id: projectId });
+  if (category) params.append("category", category);
+
+  const res = await fetch(`${API_BASE_URL}/api/compliance/documents?${params.toString()}`);
+  if (!res.ok) throw new Error(`Failed to fetch compliance documents (HTTP ${res.status})`);
+  return await res.json();
+}
+
+export async function fetchComplianceDocumentDetails(docId) {
+  const res = await fetch(`${API_BASE_URL}/api/compliance/documents/${docId}`);
+  if (!res.ok) throw new Error(`Failed to fetch document details (HTTP ${res.status})`);
+  return await res.json();
+}
+
+export async function deleteComplianceDocument(docId) {
+  const res = await fetch(`${API_BASE_URL}/api/compliance/documents/${docId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error(`Failed to delete document (HTTP ${res.status})`);
+  return await res.json();
+}
+
+export async function fetchRegulatoryRules(category = null) {
+  const params = new URLSearchParams();
+  if (category) params.append("category", category);
+
+  const res = await fetch(`${API_BASE_URL}/api/compliance/regulations?${params.toString()}`);
+  if (!res.ok) throw new Error(`Failed to fetch regulatory rules (HTTP ${res.status})`);
+  return await res.json();
+}
+
+export async function fetchComplianceEvaluations(projectId = "PRJ-101", status = null, docId = null) {
+  const params = new URLSearchParams({ project_id: projectId });
+  if (status) params.append("status", status);
+  if (docId) params.append("doc_id", docId);
+
+  const res = await fetch(`${API_BASE_URL}/api/compliance/evaluations?${params.toString()}`);
+  if (!res.ok) throw new Error(`Failed to fetch compliance evaluations (HTTP ${res.status})`);
+  return await res.json();
+}
+
+export async function reviewComplianceEvaluation(evalId, reviewedBy = "Safety Supervisor", statusOverride = null, reviewNotes = "") {
+  const res = await fetch(`${API_BASE_URL}/api/compliance/evaluations/${evalId}/review`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      reviewed_by: reviewedBy,
+      status_override: statusOverride,
+      review_notes: reviewNotes,
+    }),
+  });
+  if (!res.ok) throw new Error(`Failed to submit compliance review (HTTP ${res.status})`);
+  return await res.json();
+}
+
+export async function fetchInspectionSchedules(projectId = "PRJ-101") {
+  const res = await fetch(`${API_BASE_URL}/api/compliance/schedules?project_id=${projectId}`);
+  if (!res.ok) throw new Error(`Failed to fetch inspection schedules (HTTP ${res.status})`);
+  return await res.json();
+}
+
+export async function createInspectionSchedule(scheduleData) {
+  const res = await fetch(`${API_BASE_URL}/api/compliance/schedules`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(scheduleData),
+  });
+  if (!res.ok) throw new Error(`Failed to create inspection schedule (HTTP ${res.status})`);
+  return await res.json();
+}
+
+export async function fetchComplianceReport(projectId = "PRJ-101") {
+  const res = await fetch(`${API_BASE_URL}/api/compliance/report?project_id=${projectId}`);
+  if (!res.ok) throw new Error(`Failed to fetch compliance report (HTTP ${res.status})`);
+  return await res.json();
+}
+
+// =====================================================================
+// Milestone 3: Insurance & Claim Intelligence API Helpers
+// =====================================================================
+
+export async function fetchInsuranceExposureSummary(projectId = "PRJ-101") {
+  const res = await fetch(`${API_BASE_URL}/api/insurance/exposure-summary?project_id=${projectId}`);
+  if (!res.ok) throw new Error(`Failed to fetch insurance exposure summary (HTTP ${res.status})`);
+  return await res.json();
+}
+
+export async function fetchInsuranceClaims(projectId = "PRJ-101", decisionStatus = null) {
+  const params = new URLSearchParams({ project_id: projectId });
+  if (decisionStatus) params.append("decision_status", decisionStatus);
+
+  const res = await fetch(`${API_BASE_URL}/api/insurance/claims?${params.toString()}`);
+  if (!res.ok) throw new Error(`Failed to fetch insurance claims (HTTP ${res.status})`);
+  return await res.json();
+}
+
+export async function fetchClaimAssessmentForIncident(violationId) {
+  const res = await fetch(`${API_BASE_URL}/api/insurance/claims/${violationId}/assessment`);
+  if (!res.ok) throw new Error(`Failed to fetch claim assessment (HTTP ${res.status})`);
+  return await res.json();
+}
+
+export async function submitClaimHumanReview(assessmentId, reviewedBy = "Senior Safety Supervisor", decisionStatus = "APPROVED_FOR_FILING", supervisorNotes = "", legalCounselSignOff = false) {
+  const res = await fetch(`${API_BASE_URL}/api/insurance/claims/${assessmentId}/human-review`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      reviewed_by: reviewedBy,
+      decision_status: decisionStatus,
+      supervisor_notes: supervisorNotes,
+      legal_counsel_sign_off: legalCounselSignOff,
+    }),
+  });
+  if (!res.ok) throw new Error(`Failed to submit claim review (HTTP ${res.status})`);
+  return await res.json();
+}
+

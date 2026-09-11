@@ -1,222 +1,238 @@
-import math
+import json
+from typing import List, Dict, Any
+from app.services.yolo_detector import normalize_class_name
+
 
 class SafetyAgent:
     """
-    BuildSure AI — Safety Agent Core Module (Milestone 2)
-    Autonomous AI Safety Agent that analyzes raw YOLO object detections,
-    maps PPE items (helmets, vests) to individual worker bounding boxes via spatial geometry,
-    evaluates construction zone rules, computes explainable risk scores, and generates actionable safety recommendations.
+    BuildSure AI — Intelligent Safety Agent & PPE Association Engine
+    Performs:
+    1. Spatial association between detected persons and PPE objects (hard hats, safety vests)
+    2. OSHA zone-weighted risk scoring
+    3. Actionable remediation recommendations
     """
 
-    ZONE_RULES_MAP = {
-        "General Work Zone": {"helmet": True, "vest": False, "harness": False, "multiplier": 1.0},
-        "Excavation Zone": {"helmet": True, "vest": True, "harness": False, "multiplier": 1.2},
-        "Vehicle Movement Zone": {"helmet": True, "vest": True, "harness": False, "multiplier": 1.3},
-        "Electrical Work Zone": {"helmet": True, "vest": True, "harness": False, "multiplier": 1.3},
-        "Work-at-Height Zone": {"helmet": True, "vest": True, "harness": True, "multiplier": 1.5},
+    ZONE_RISK_MULTIPLIERS = {
+        "excavation": 1.5,
+        "deep excavation": 1.5,
+        "crane": 1.4,
+        "tower crane": 1.4,
+        "scaffolding": 1.4,
+        "high-rise": 1.4,
+        "electrical": 1.3,
+        "substation": 1.3,
+        "confined space": 1.5,
+        "demolition": 1.5,
+        "general work zone": 1.0,
+        "general": 1.0
     }
 
-    BASE_RISK_SCORES = {
-        "missing_helmet": 60,
-        "missing_safety_vest": 50,
-        "missing_helmet_and_vest": 85,
-        "needs_human_review": 30,
-        "compliant": 0
-    }
+    def get_zone_multiplier(self, zone_name: str) -> float:
+        z = (zone_name or "").strip().lower()
+        for k, v in self.ZONE_RISK_MULTIPLIERS.items():
+            if k in z:
+                return v
+        return 1.0
 
-    def __init__(self, confidence_threshold=0.70):
-        this_conf = confidence_threshold
-        self.confidence_threshold = confidence_threshold
+    def generate_recommendation(self, violation_type: str, zone_name: str = "") -> str:
+        vt = (violation_type or "").lower()
+        zn = (zone_name or "Active Construction Site")
 
-    def get_zone_rule(self, zone_name):
-        return self.ZONE_RULES_MAP.get(zone_name, self.ZONE_RULES_MAP["General Work Zone"])
+        if "missing_helmet_and_vest" in vt or ("helmet" in vt and "vest" in vt):
+            return (
+                f"CRITICAL: Worker missing both Hard Hat and High-Vis Vest in {zn}. "
+                "Immediate site halt required. Issue mandatory Level-1 PPE before worker re-enters active zone."
+            )
+        elif "missing_helmet" in vt or "helmet" in vt:
+            return (
+                f"HIGH RISK: Missing Hard Hat detected in {zn}. "
+                "Halt overhead activities nearby and ensure worker dons an OSHA-compliant Type I/II hard hat immediately."
+            )
+        elif "missing_vest" in vt or "vest" in vt:
+            return (
+                f"MEDIUM RISK: Missing High-Visibility Safety Vest in {zn}. "
+                "Provide ANSI/ISEA 107 Class 2 reflective safety vest prior to mobile equipment interaction."
+            )
+        elif "review" in vt:
+            return (
+                f"REVIEW REQUIRED: Low-confidence detection in {zn}. "
+                "Safety supervisor manual visual inspection recommended."
+            )
+        return f"Compliant: Worker adheres to all required PPE standards in {zn}."
 
-    def point_in_box(self, px, py, box, tolerance=0.15):
+    def _box_iou_or_containment(self, p_box: List[int], item_box: List[int]) -> float:
+        """Calculates degree of containment/overlap of PPE item inside person box."""
+        px1, py1, px2, py2 = p_box
+        ix1, iy1, ix2, iy2 = item_box
+
+        # Intersection
+        xx1 = max(px1, ix1)
+        yy1 = max(py1, iy1)
+        xx2 = min(px2, ix2)
+        yy2 = min(py2, iy2)
+
+        w = max(0, xx2 - xx1)
+        h = max(0, yy2 - yy1)
+        inter_area = float(w * h)
+
+        item_area = float(max(1, (ix2 - ix1) * (iy2 - iy1)))
+        return inter_area / item_area
+
+    def analyze_detections(
+        self,
+        detections: List[Dict[str, Any]],
+        zone_name: str = "General Work Zone",
+        project_id: str = "PRJ-101"
+    ) -> Dict[str, Any]:
         """
-        Check if point (px, py) is inside or sufficiently near box [x1, y1, x2, y2].
+        Takes raw detections from YOLODetector, associates PPE to each person,
+        and produces OSHA compliance decisions and risk metrics.
         """
-        x1, y1, x2, y2 = box
-        bw = x2 - x1
-        bh = y2 - y1
-        
-        tol_x = bw * tolerance
-        tol_y = bh * tolerance
+        zone_mult = self.get_zone_multiplier(zone_name)
 
-        return (x1 - tol_x) <= px <= (x2 + tol_x) and (y1 - tol_y) <= py <= (y2 + tol_y)
+        # 1. Separate normalized detections
+        persons = []
+        helmets = []
+        vests = []
 
-    def analyze_detections(self, detections, zone_name="General Work Zone", project_id="PRJ-101"):
-        """
-        Process raw YOLO detections list:
-        Detections format: [{"class": str, "confidence": float, "box": [x1, y1, x2, y2]}]
-        """
-        zone_info = self.get_zone_rule(zone_name)
-        requires_helmet = zone_info["helmet"]
-        requires_vest = zone_info["vest"]
-        requires_harness = zone_info["harness"]
-        zone_multiplier = zone_info["multiplier"]
+        for d in detections:
+            c_name = normalize_class_name(d.get("class", ""))
+            box = d.get("box", [0, 0, 0, 0])
+            conf = float(d.get("confidence", 0.8))
 
-        def normalize_label(val):
-            return str(val).strip().lower().replace("-", "_").replace(" ", "_")
+            if c_name == "person":
+                persons.append({"box": box, "confidence": conf})
+            elif c_name == "hard_hat":
+                helmets.append({"box": box, "confidence": conf})
+            elif c_name == "safety_vest":
+                vests.append({"box": box, "confidence": conf})
 
-        persons = [d for d in detections if normalize_label(d.get("class", "")) in ["person", "worker", "human", "people", "persons", "workers", "subject"]]
-        helmets = [d for d in detections if normalize_label(d.get("class", "")) in ["hard_hat", "helmet", "hardhat", "safety_helmet", "hat", "hard_hats", "helmets"]]
-        vests = [d for d in detections if normalize_label(d.get("class", "")) in ["safety_vest", "vest", "reflective_vest", "high_vis_vest", "hi_vis_vest", "safety_vests", "vests"]]
-
+        # 2. For each person, check associated PPE
         workers_compliance = []
         violations = []
-        recommendations_set = set()
+        recommendations = []
 
-        worker_counter = 1
+        for idx, p in enumerate(persons, start=1):
+            worker_id = f"WRK-{idx:02d}"
+            px1, py1, px2, py2 = p["box"]
+            pw = px2 - px1
+            ph = py2 - py1
 
-        for person in persons:
-            worker_id = f"Worker-{worker_counter:02d}"
-            worker_counter += 1
+            # Head & Torso anchors for person
+            head_box = [px1, py1, px2, int(py1 + ph * 0.35)]
+            torso_box = [px1, int(py1 + ph * 0.20), px2, int(py1 + ph * 0.75)]
 
-            px1, py1, px2, py2 = person["box"]
-            person_height = py2 - py1
-
-            # Head area: Upper 35% of person bounding box
-            head_box = [px1, py1, px2, py1 + (person_height * 0.35)]
-
-            # Torso area: Middle 40% of person bounding box
-            torso_box = [px1, py1 + (person_height * 0.20), px2, py1 + (person_height * 0.70)]
-
-            # Match Helmet
+            # Check hard hat association
             has_helmet = False
-            matched_helmet_conf = 0.0
+            helmet_conf = 0.0
             for h in helmets:
-                hx1, hy1, hx2, hy2 = h["box"]
-                h_cx = (hx1 + hx2) / 2.0
-                h_cy = (hy1 + hy2) / 2.0
-                if self.point_in_box(h_cx, h_cy, head_box):
+                # Check overlap with head region or overall person box
+                if self._box_iou_or_containment(head_box, h["box"]) > 0.30 or self._box_iou_or_containment(p["box"], h["box"]) > 0.50:
                     has_helmet = True
-                    matched_helmet_conf = h["confidence"]
-                    break
+                    helmet_conf = max(helmet_conf, h["confidence"])
 
-            # Match Vest
+            # Check vest association
             has_vest = False
-            matched_vest_conf = 0.0
+            vest_conf = 0.0
             for v in vests:
-                vx1, vy1, vx2, vy2 = v["box"]
-                v_cx = (vx1 + vx2) / 2.0
-                v_cy = (vy1 + vy2) / 2.0
-                if self.point_in_box(v_cx, v_cy, torso_box):
+                if self._box_iou_or_containment(torso_box, v["box"]) > 0.30 or self._box_iou_or_containment(p["box"], v["box"]) > 0.50:
                     has_vest = True
-                    matched_vest_conf = v["confidence"]
-                    break
+                    vest_conf = max(vest_conf, v["confidence"])
 
-            # Low confidence check for worker or matched PPE
-            is_low_confidence = person["confidence"] < self.confidence_threshold
-
-            # Evaluate Compliance Status
+            # Determine compliance status
+            detected_items = []
             missing_items = []
-            if requires_helmet and not has_helmet:
-                missing_items.append("Helmet")
-            if requires_vest and not has_vest:
+
+            if has_helmet:
+                detected_items.append("Hard Hat")
+            else:
+                missing_items.append("Hard Hat")
+
+            if has_vest:
+                detected_items.append("Safety Vest")
+            else:
                 missing_items.append("Safety Vest")
 
-            # Determine Violation Type
-            if is_low_confidence:
-                violation_type = "needs_human_review"
-                decision_status = "needs_human_review"
-            elif "Helmet" in missing_items and "Safety Vest" in missing_items:
-                violation_type = "missing_helmet_and_vest"
-                decision_status = "confirmed_violation"
-            elif "Helmet" in missing_items:
-                violation_type = "missing_helmet"
-                decision_status = "confirmed_violation"
-            elif "Safety Vest" in missing_items:
-                violation_type = "missing_safety_vest"
-                decision_status = "confirmed_violation"
-            else:
-                violation_type = "compliant"
+            if has_helmet and has_vest:
                 decision_status = "compliant"
-
-            # Calculate Risk Score
-            base_score = self.BASE_RISK_SCORES.get(violation_type, 0)
-            final_risk_score = min(100.0, round(base_score * zone_multiplier, 1))
-
-            # Categorize Risk Rating
-            if final_risk_score >= 81:
-                risk_category = "Critical"
-            elif final_risk_score >= 61:
-                risk_category = "High"
-            elif final_risk_score >= 31:
-                risk_category = "Medium"
-            else:
+                violation_type = "compliant"
+                base_risk = 10.0
                 risk_category = "Low"
+            elif not has_helmet and not has_vest:
+                decision_status = "violation"
+                violation_type = "missing_helmet_and_vest"
+                base_risk = 75.0
+                risk_category = "Critical"
+            elif not has_helmet:
+                decision_status = "violation"
+                violation_type = "missing_helmet"
+                base_risk = 50.0
+                risk_category = "High"
+            else:
+                decision_status = "violation"
+                violation_type = "missing_vest"
+                base_risk = 35.0
+                risk_category = "Medium"
 
-            # Recommendations
-            recommendation = self.generate_recommendation(violation_type, zone_name)
-            if violation_type != "compliant":
-                recommendations_set.add(recommendation)
+            final_risk = min(100.0, round(base_risk * zone_mult, 1))
+            rec = self.generate_recommendation(violation_type, zone_name)
 
-            # Store Worker Compliance Record
-            worker_record = {
+            worker_dict = {
                 "anonymous_worker_id": worker_id,
-                "person_box": person["box"],
-                "person_confidence": person["confidence"],
+                "person_box": p["box"],
+                "person_confidence": p["confidence"],
                 "has_helmet": has_helmet,
                 "has_vest": has_vest,
-                "requires_helmet": requires_helmet,
-                "requires_vest": requires_vest,
-                "requires_harness": requires_harness,
-                "violation_type": violation_type,
+                "helmet_confidence": round(helmet_conf, 2),
+                "vest_confidence": round(vest_conf, 2),
                 "decision_status": decision_status,
-                "final_risk_score": final_risk_score,
+                "violation_type": violation_type,
+                "risk_score": final_risk,
                 "risk_category": risk_category,
-                "recommendation": recommendation
+                "recommendation": rec
             }
-            workers_compliance.append(worker_record)
+            workers_compliance.append(worker_dict)
 
-            # Store Violation Record if non-compliant
-            if violation_type != "compliant":
+            if decision_status != "compliant":
                 violations.append({
                     "anonymous_worker_id": worker_id,
-                    "project_id": project_id,
-                    "zone_name": zone_name,
                     "violation_type": violation_type,
-                    "required_ppe": ", ".join(missing_items + (["Harness"] if requires_harness else [])),
-                    "detected_ppe": ", ".join(([ "Helmet" ] if has_helmet else []) + ([ "Safety Vest" ] if has_vest else [])),
-                    "missing_ppe": ", ".join(missing_items),
-                    "confidence_score": person["confidence"],
-                    "base_risk_score": float(base_score),
-                    "zone_multiplier": zone_multiplier,
-                    "final_risk_score": final_risk_score,
+                    "required_ppe": "Hard Hat, Safety Vest",
+                    "detected_ppe": ", ".join(detected_items) if detected_items else "None",
+                    "missing_ppe": ", ".join(missing_items) if missing_items else "None",
+                    "confidence_score": p["confidence"],
+                    "base_risk_score": base_risk,
+                    "zone_multiplier": zone_mult,
+                    "final_risk_score": final_risk,
                     "risk_category": risk_category,
                     "decision_status": decision_status,
-                    "recommendation": recommendation,
-                    "bounding_box": person["box"]
+                    "bounding_box": p["box"],
+                    "recommendation": rec
                 })
-
-        # Add harness disclaimer for Work-at-Height Zone
-        if requires_harness:
-            recommendations_set.add("Work-at-Height Zone: Safety harness verification requires manual supervisor review.")
+                if rec not in recommendations:
+                    recommendations.append(rec)
 
         total_workers = len(workers_compliance)
         compliant_count = sum(1 for w in workers_compliance if w["decision_status"] == "compliant")
-        overall_safety_score = round((compliant_count / total_workers * 100), 1) if total_workers > 0 else 100.0
+        violations_count = len(violations)
+        
+        if total_workers > 0:
+            overall_safety_score = round((compliant_count / total_workers) * 100.0, 1)
+        else:
+            overall_safety_score = 100.0
+
+        if not recommendations:
+            recommendations.append(f"All {total_workers} detected personnel in {zone_name} are fully compliant with PPE requirements.")
 
         return {
             "total_workers": total_workers,
             "compliant_workers": compliant_count,
-            "violations_count": len(violations),
+            "violations_count": violations_count,
             "overall_safety_score": overall_safety_score,
-            "zone_multiplier": zone_multiplier,
             "workers_compliance": workers_compliance,
             "violations": violations,
-            "recommendations": list(recommendations_set)
+            "recommendations": recommendations
         }
 
-    def generate_recommendation(self, violation_type, zone_name):
-        if violation_type == "missing_helmet":
-            return f"Ensure worker wears an approved safety helmet before continuing work in {zone_name}."
-        elif violation_type == "missing_safety_vest":
-            return f"Ensure worker wears a high-visibility safety vest before continuing work in {zone_name}."
-        elif violation_type == "missing_helmet_and_vest":
-            return f"Temporarily pause worker's activity in {zone_name} and ensure required PPE is worn before work resumes."
-        elif violation_type == "needs_human_review":
-            return f"The AI detection confidence is low. A safety supervisor should verify this observation in {zone_name}."
-        return "Worker is compliant with safety PPE rules."
 
 safety_agent = SafetyAgent()
