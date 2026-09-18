@@ -93,10 +93,25 @@ class PPEViolationSchema(BaseModel):
     class Config:
         from_attributes = True
 
+class ModelInfoResponse(BaseModel):
+    model_name: str
+    model_path: str
+    model_size_mb: str
+    classes: List[str]
+    inference_mode: str
+    fallback: str
+
 class SafetyAnalysisResponse(BaseModel):
+    model_name: Optional[str] = "Hansung-Cho/yolov8-ppe-detection"
+    detections: Optional[List[dict]] = []
+    violations: List[dict] = []
+    zone_name: str
+    annotated_image: Optional[str] = None
+    annotated_image_url: str
+    original_image_url: str
+    human_review_required: bool = False
     analysis_id: str
     project_id: str
-    zone_name: str
     total_workers_detected: int
     compliant_workers_count: int
     violations_detected_count: int
@@ -104,10 +119,7 @@ class SafetyAnalysisResponse(BaseModel):
     risk_category: str
     processing_time_ms: float
     model_confidence_threshold: float
-    original_image_url: str
-    annotated_image_url: str
     workers_compliance: List[dict]
-    violations: List[dict]
     recommendations: List[str]
     disclaimer: str = "AI detections are decision-support signals and require safety supervisor verification."
 

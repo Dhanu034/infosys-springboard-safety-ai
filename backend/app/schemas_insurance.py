@@ -20,12 +20,32 @@ class InsuranceExposureSummary(BaseModel):
 
 class ClaimChecklistItem(BaseModel):
     item_id: str
+    code: Optional[str] = None  # CHK-01, CHK-02, etc.
     item_title: str
+    title: Optional[str] = None  # alias for item_title
     category: str
     is_required: bool = True
     is_attached: bool = False
+    available: Optional[bool] = None  # alias for is_attached
     evidence_reference: Optional[str] = None
     verification_notes: Optional[str] = None
+    source: Optional[str] = None  # e.g. "ppe_violations", "BuildSure_Safety_Manual_PRJ-101.pdf"
+    source_table: Optional[str] = None  # e.g. "ppe_violations", "safety_audit_logs", "safety_zone_rules", "compliance_documents"
+    linked_record_id: Optional[str] = None  # violation_id, audit_id, rule_id, doc_id
+    document_id: Optional[str] = None
+    evidence_page: Optional[int] = None
+    evidence_section: Optional[str] = None
+    evidence_snippet: Optional[str] = None
+    review_required: bool = True
+
+    def __init__(self, **data):
+        if 'item_id' in data and 'code' not in data:
+            data['code'] = data['item_id']
+        if 'item_title' in data and 'title' not in data:
+            data['title'] = data['item_title']
+        if 'is_attached' in data and 'available' not in data:
+            data['available'] = data['is_attached']
+        super().__init__(**data)
 
 class InsuranceClaimAssessmentResponse(BaseModel):
     assessment_id: str

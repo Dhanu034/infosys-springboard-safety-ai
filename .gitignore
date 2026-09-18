@@ -17,6 +17,8 @@ __pycache__/
 *.db-journal
 
 # Model weights
+models/*.pt
+models/
 *.pt
 *.onnx
 *.weights

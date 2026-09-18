@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Settings:
-    YOLO_MODEL_PATH: str = os.getenv("YOLO_MODEL_PATH", "yolov8n.pt")
+    YOLO_MODEL_PATH: str = os.getenv("YOLO_MODEL_PATH", "models/ppe_model.pt")
     YOLO_CONFIDENCE_THRESHOLD: float = float(os.getenv("YOLO_CONFIDENCE_THRESHOLD", "0.70"))
 
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./safety_intelligence.db")

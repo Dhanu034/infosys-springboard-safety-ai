@@ -14,11 +14,15 @@ import {
   CheckSquare,
   Square,
   Scale,
-  Camera
+  Camera,
+  Link,
+  ChevronRight,
+  ExternalLink
 } from 'lucide-react';
 import { 
   fetchInsuranceExposureSummary, 
-  fetchInsuranceClaims 
+  fetchInsuranceClaims,
+  fetchClaimAssessmentForIncident
 } from '../../services/api';
 import ClaimReviewModal from '../insurance/ClaimReviewModal';
 
@@ -27,8 +31,10 @@ export default function InsurancePage({ selectedProject }) {
 
   const [exposure, setExposure] = useState(null);
   const [claims, setClaims] = useState([]);
+  const [selectedViolationId, setSelectedViolationId] = useState(null);
   const [selectedClaim, setSelectedClaim] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [claimLoading, setClaimLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState('ALL');
   
   // Modal state
@@ -43,13 +49,14 @@ export default function InsurancePage({ selectedProject }) {
       ]);
       setExposure(expData);
       setClaims(claimsData);
+
       if (claimsData && claimsData.length > 0) {
-        // If a claim was previously selected, keep it updated
-        setSelectedClaim(prev => {
-          if (!prev) return claimsData[0];
-          const found = claimsData.find(c => c.assessment_id === prev.assessment_id);
-          return found || claimsData[0];
-        });
+        // Maintain selection or select first violation
+        if (!selectedViolationId) {
+          const firstViolationId = claimsData[0].violation_id;
+          setSelectedViolationId(firstViolationId);
+          setSelectedClaim(claimsData[0]);
+        }
       }
     } catch (err) {
       console.error("Error loading insurance intelligence:", err);
@@ -61,6 +68,24 @@ export default function InsurancePage({ selectedProject }) {
   useEffect(() => {
     loadData();
   }, [projectId]);
+
+  // REQUIREMENT 7: When selectedViolationId changes, clear old checklist before fetching new incident data
+  const handleSelectViolation = async (violationId) => {
+    if (selectedViolationId === violationId && selectedClaim) return;
+    
+    setSelectedViolationId(violationId);
+    setSelectedClaim(null); // Clear previous incident checklist immediately
+    setClaimLoading(true);
+
+    try {
+      const freshClaim = await fetchClaimAssessmentForIncident(violationId);
+      setSelectedClaim(freshClaim);
+    } catch (err) {
+      console.error("Error fetching fresh claim assessment for incident:", err);
+    } finally {
+      setClaimLoading(false);
+    }
+  };
 
   const filteredClaims = claims.filter(c => {
     if (statusFilter !== 'ALL' && c.decision_status !== statusFilter) return false;
@@ -80,7 +105,7 @@ export default function InsurancePage({ selectedProject }) {
             </span>
           </div>
           <p className="text-xs font-mono text-[#859397] mt-1 tracking-wide">
-            ACTUARIAL EXPOSURE INDEX & CLAIM EVIDENCE CHECKLIST // {selectedProject?.name || "PROJECT ALPHA"}
+            ACTUARIAL EXPOSURE INDEX & INCIDENT EVIDENCE CHECKLIST // {selectedProject?.name || "PROJECT ALPHA"}
           </p>
         </div>
 
@@ -175,7 +200,7 @@ export default function InsurancePage({ selectedProject }) {
 
       </div>
 
-      {/* Main Split: Claim Incidents List & Checklist Inspector */}
+      {/* Main Split: Claim Incidents List & Incident Evidence Checklist */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left 2 Cols: Incident Claim Assessments List */}
@@ -183,7 +208,7 @@ export default function InsurancePage({ selectedProject }) {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#3c494c]/30">
             <div>
               <h3 className="text-base font-bold text-[#e0e3e5] font-sans">Safety Incidents & Claim Exposure Feed</h3>
-              <p className="text-[11px] font-mono text-[#859397]">CORRELATED FROM SQLITE VIOLATIONS</p>
+              <p className="text-[11px] font-mono text-[#859397]">CORRELATED FROM DATABASE PPE VIOLATIONS</p>
             </div>
 
             {/* Filter buttons */}
@@ -216,7 +241,7 @@ export default function InsurancePage({ selectedProject }) {
           ) : (
             <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
               {filteredClaims.map((c) => {
-                const isSelected = selectedClaim?.assessment_id === c.assessment_id;
+                const isSelected = (selectedViolationId === c.violation_id) || (selectedClaim?.assessment_id === c.assessment_id);
                 let tierStyle = "text-amber-400 bg-amber-500/10 border-amber-400/30";
                 if (c.claim_risk_tier === 'HIGH' || c.claim_risk_tier === 'CATASTROPHIC') {
                   tierStyle = "text-rose-400 bg-rose-500/10 border-rose-400/30";
@@ -225,10 +250,10 @@ export default function InsurancePage({ selectedProject }) {
                 return (
                   <div
                     key={c.assessment_id}
-                    onClick={() => setSelectedClaim(c)}
+                    onClick={() => handleSelectViolation(c.violation_id)}
                     className={`p-4 rounded-xl border cursor-pointer transition-all space-y-2 ${
                       isSelected
-                        ? 'bg-[#1d2022] border-amber-400/60 shadow-md'
+                        ? 'bg-[#1d2022] border-amber-400/80 shadow-md ring-1 ring-amber-400/40'
                         : 'bg-[#101415]/70 border-[#3c494c]/30 hover:border-amber-500/40'
                     }`}
                   >
@@ -239,7 +264,7 @@ export default function InsurancePage({ selectedProject }) {
                           <span className="text-[10px] font-mono text-[#859397]">in {c.zone_name}</span>
                         </div>
                         <p className="text-[11px] font-mono text-[#bbc9cd] mt-0.5">
-                          Score: {c.exposure_score} • Severity: {c.incident_severity}
+                          Exposure Score: {c.exposure_score} • Severity: {c.incident_severity}
                         </p>
                       </div>
 
@@ -254,7 +279,7 @@ export default function InsurancePage({ selectedProject }) {
                     </div>
 
                     <div className="flex items-center justify-between text-[10px] font-mono text-[#859397]">
-                      <span>Checklist: {c.checklist ? c.checklist.filter(i => i.is_attached).length : 0}/{c.checklist?.length || 5} Attached</span>
+                      <span>Checklist: {c.checklist ? c.checklist.filter(i => i.is_attached || i.available).length : 0}/{c.checklist?.length || 5} Attached</span>
                       <span>{new Date(c.detected_at || c.created_at).toLocaleString()}</span>
                     </div>
                   </div>
@@ -265,13 +290,13 @@ export default function InsurancePage({ selectedProject }) {
 
         </div>
 
-        {/* Right 1 Col: Selected Claim Checklist & Supervisor Review */}
+        {/* Right 1 Col: Selected Incident Evidence Checklist & Adjudication */}
         <div className="glass-panel p-6 rounded-2xl border border-[#3c494c]/30 bg-[#162032]/80 space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-[#3c494c]/30">
             <div>
-              <h3 className="text-sm font-bold text-[#e0e3e5] font-sans">Claim Dossier Checklist</h3>
+              <h3 className="text-sm font-bold text-[#e0e3e5] font-sans">Incident Evidence Checklist</h3>
               <p className="text-[10px] font-mono text-cyan-400 mt-0.5">
-                {selectedClaim ? `INCIDENT: ${selectedClaim.incident_type}` : "SELECT AN INCIDENT"}
+                {selectedClaim ? `TARGET: ${selectedClaim.incident_type} (${selectedClaim.zone_name})` : "SELECT AN INCIDENT"}
               </p>
             </div>
             
@@ -286,28 +311,67 @@ export default function InsurancePage({ selectedProject }) {
             )}
           </div>
 
-          {selectedClaim ? (
+          {claimLoading && (
+            <div className="py-12 text-center text-[#859397] space-y-2">
+              <RefreshCw className="h-5 w-5 mx-auto animate-spin text-amber-400" />
+              <p className="text-xs font-mono">Loading incident evidence records...</p>
+            </div>
+          )}
+
+          {!claimLoading && selectedClaim ? (
             <div className="space-y-4 text-xs font-mono">
               
-              {/* Checklist Items */}
-              <div className="space-y-2">
-                {selectedClaim.checklist && selectedClaim.checklist.map((item, idx) => (
-                  <div key={item.item_id || idx} className="p-2.5 rounded-lg bg-[#101415]/70 border border-[#3c494c]/20 space-y-1">
-                    <div className="flex items-center gap-2">
-                      {item.is_attached ? (
-                        <CheckSquare className="h-4 w-4 text-emerald-400 shrink-0" />
-                      ) : (
-                        <Square className="h-4 w-4 text-[#859397] shrink-0" />
-                      )}
-                      <span className={`font-semibold ${item.is_attached ? 'text-[#e0e3e5]' : 'text-[#859397]'}`}>
-                        {item.item_title}
-                      </span>
+              {/* Evidence Checklist Items */}
+              <div className="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
+                {selectedClaim.checklist && selectedClaim.checklist.map((item, idx) => {
+                  const isAttached = item.is_attached || item.available;
+                  return (
+                    <div key={item.item_id || item.code || idx} className="p-3 rounded-xl bg-[#101415]/70 border border-[#3c494c]/30 space-y-1.5 hover:border-amber-400/40 transition-colors">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-2">
+                          {isAttached ? (
+                            <CheckSquare className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                          ) : (
+                            <Square className="h-4 w-4 text-[#859397] shrink-0 mt-0.5" />
+                          )}
+                          <div>
+                            <span className="text-[10px] font-bold text-cyan-300 block">{item.code || item.item_id}</span>
+                            <span className={`font-semibold ${isAttached ? 'text-[#e0e3e5]' : 'text-[#859397]'}`}>
+                              {item.item_title || item.title}
+                            </span>
+                          </div>
+                        </div>
+
+                        <span className={`text-[10px] px-2 py-0.5 rounded font-bold border shrink-0 ${
+                          isAttached ? 'bg-emerald-500/10 text-emerald-400 border-emerald-400/30' : 'bg-[#1d2022] text-[#859397] border-[#3c494c]/40'
+                        }`}>
+                          {isAttached ? 'ATTACHED' : 'MISSING'}
+                        </span>
+                      </div>
+
+                      {/* Source & Evidence details */}
+                      <div className="pl-6 space-y-1 text-[10px] text-[#bbc9cd]">
+                        {item.source && (
+                          <div className="flex items-center gap-1.5 text-[#859397]">
+                            <Link className="h-3 w-3 text-cyan-400 shrink-0" />
+                            <span>SOURCE: <strong>{item.source}</strong> ({item.source_table || 'database'})</span>
+                          </div>
+                        )}
+                        {item.evidence_reference && (
+                          <p className="text-[#859397] truncate">{item.evidence_reference}</p>
+                        )}
+                        {item.evidence_snippet && (
+                          <div className="p-2 rounded bg-[#162032] border border-cyan-500/20 text-cyan-100 italic leading-relaxed text-[10px]">
+                            "{item.evidence_snippet}"
+                          </div>
+                        )}
+                        {item.verification_notes && (
+                          <p className="italic text-[#859397] pt-0.5">{item.verification_notes}</p>
+                        )}
+                      </div>
                     </div>
-                    {item.evidence_reference && (
-                      <p className="text-[10px] text-[#859397] pl-6 truncate">{item.evidence_reference}</p>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Review Status & Notes */}
@@ -334,7 +398,7 @@ export default function InsurancePage({ selectedProject }) {
               </div>
 
             </div>
-          ) : (
+          ) : !claimLoading && (
             <div className="py-12 text-center text-[#859397] text-xs font-mono">
               Select an incident from the list to view claim documentation readiness.
             </div>
@@ -351,6 +415,9 @@ export default function InsurancePage({ selectedProject }) {
         onClose={() => setIsReviewModalOpen(false)}
         onReviewSuccess={() => {
           loadData();
+          if (selectedViolationId) {
+            fetchClaimAssessmentForIncident(selectedViolationId).then(setSelectedClaim);
+          }
           setIsReviewModalOpen(false);
         }}
       />
@@ -358,3 +425,4 @@ export default function InsurancePage({ selectedProject }) {
     </div>
   );
 }
+

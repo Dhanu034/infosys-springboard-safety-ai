@@ -35,6 +35,14 @@ def health_check(db: Session = Depends(get_db)):
         "configured_confidence_threshold": settings.YOLO_CONFIDENCE_THRESHOLD
     }
 
+@router.get("/api/safety/model-info", response_model=schemas.ModelInfoResponse)
+def get_model_info():
+    """
+    TASK 2: Model-health check endpoint.
+    Returns model name, path, size, actual classes from model.names, inference mode and fallback.
+    """
+    return yolo_detector.get_model_info()
+
 @router.post("/api/safety/analyze-image", response_model=schemas.SafetyAnalysisResponse)
 async def analyze_safety_image(
     file: UploadFile = File(...),
@@ -157,11 +165,19 @@ async def analyze_safety_image(
             print(f"[BuildSure AI] Non-blocking n8n dispatch exception: {e}")
 
     processing_time_ms = round((time.time() - start_time) * 1000, 2)
+    human_review_required = bool(agent_result.get("human_review_required", False))
 
     return {
+        "model_name": yolo_detector.model_name,
+        "detections": detections,
+        "violations": saved_violations,
+        "zone_name": zone_name,
+        "annotated_image": annotated_url,
+        "annotated_image_url": annotated_url,
+        "original_image_url": orig_url,
+        "human_review_required": human_review_required,
         "analysis_id": f"ANL-{file_id}",
         "project_id": project_id,
-        "zone_name": zone_name,
         "total_workers_detected": agent_result["total_workers"],
         "compliant_workers_count": agent_result["compliant_workers"],
         "violations_detected_count": agent_result["violations_count"],
@@ -169,10 +185,7 @@ async def analyze_safety_image(
         "risk_category": "Low" if agent_result["overall_safety_score"] >= 85 else ("Medium" if agent_result["overall_safety_score"] >= 65 else "Critical"),
         "processing_time_ms": processing_time_ms,
         "model_confidence_threshold": settings.YOLO_CONFIDENCE_THRESHOLD,
-        "original_image_url": orig_url,
-        "annotated_image_url": annotated_url,
         "workers_compliance": agent_result["workers_compliance"],
-        "violations": saved_violations,
         "recommendations": agent_result["recommendations"],
         "disclaimer": "AI detections are decision-support signals and require safety supervisor verification."
     }

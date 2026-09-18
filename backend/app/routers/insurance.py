@@ -31,14 +31,21 @@ def get_all_claim_assessments(
     decision_status: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
-    """List all safety event insurance claim assessments and checklists."""
-    # Ensure assessments exist for top high-severity violations
+    """List all safety event insurance claim assessments and dynamically refreshed checklists."""
+    # Ensure assessments exist and are up to date for violations in project
     violations = db.query(models.PPEViolation).filter(models.PPEViolation.project_id == project_id).all()
     for v in violations:
         existing = db.query(models.InsuranceAssessment).filter(models.InsuranceAssessment.violation_id == v.violation_id).first()
+        fresh = insurance_engine.generate_claim_assessment_for_violation(db, v)
         if not existing:
-            new_assessment = insurance_engine.generate_claim_assessment_for_violation(db, v)
-            db.add(new_assessment)
+            db.add(fresh)
+        else:
+            existing.missing_documentation = fresh.missing_documentation
+            existing.checklist_data = fresh.checklist_data
+            existing.evidence_completeness = fresh.evidence_completeness
+            existing.exposure_score = fresh.exposure_score
+            existing.claim_risk_tier = fresh.claim_risk_tier
+            existing.illustrative_liability_range = fresh.illustrative_liability_range
     db.commit()
 
     query = db.query(models.InsuranceAssessment).filter(models.InsuranceAssessment.project_id == project_id)
@@ -83,17 +90,28 @@ def get_claim_assessment_for_incident(
     violation_id: str,
     db: Session = Depends(get_db)
 ):
-    """Retrieve or generate claim documentation checklist and exposure rating for a specific incident."""
+    """Retrieve or dynamically refresh claim documentation checklist and exposure rating for a specific incident."""
     violation = db.query(models.PPEViolation).filter(models.PPEViolation.violation_id == violation_id).first()
     if not violation:
         raise HTTPException(status_code=404, detail="Safety violation record not found")
 
-    assessment = db.query(models.InsuranceAssessment).filter(models.InsuranceAssessment.violation_id == violation_id).first()
-    if not assessment:
-        assessment = insurance_engine.generate_claim_assessment_for_violation(db, violation)
-        db.add(assessment)
+    fresh = insurance_engine.generate_claim_assessment_for_violation(db, violation)
+    existing = db.query(models.InsuranceAssessment).filter(models.InsuranceAssessment.violation_id == violation_id).first()
+    if not existing:
+        db.add(fresh)
         db.commit()
-        db.refresh(assessment)
+        db.refresh(fresh)
+        assessment = fresh
+    else:
+        existing.missing_documentation = fresh.missing_documentation
+        existing.checklist_data = fresh.checklist_data
+        existing.evidence_completeness = fresh.evidence_completeness
+        existing.exposure_score = fresh.exposure_score
+        existing.claim_risk_tier = fresh.claim_risk_tier
+        existing.illustrative_liability_range = fresh.illustrative_liability_range
+        db.commit()
+        db.refresh(existing)
+        assessment = existing
 
     raw_checklist = json.loads(assessment.checklist_data) if assessment.checklist_data else []
     checklist_items = [si.ClaimChecklistItem(**item) for item in raw_checklist]

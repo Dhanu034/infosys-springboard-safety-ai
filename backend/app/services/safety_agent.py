@@ -94,6 +94,11 @@ class SafetyAgent:
         persons = []
         helmets = []
         vests = []
+        no_helmets = []
+        no_vests = []
+        masks = []
+        no_masks = []
+        hazards = []
 
         for d in detections:
             c_name = normalize_class_name(d.get("class", ""))
@@ -106,6 +111,33 @@ class SafetyAgent:
                 helmets.append({"box": box, "confidence": conf})
             elif c_name == "safety_vest":
                 vests.append({"box": box, "confidence": conf})
+            elif c_name == "no_hard_hat":
+                no_helmets.append({"box": box, "confidence": conf})
+            elif c_name == "no_safety_vest":
+                no_vests.append({"box": box, "confidence": conf})
+            elif c_name == "mask":
+                masks.append({"box": box, "confidence": conf})
+            elif c_name == "no_mask":
+                no_masks.append({"box": box, "confidence": conf})
+            elif c_name in ["safety_cone", "machinery", "vehicle"]:
+                hazards.append({"class": c_name, "box": box, "confidence": conf})
+
+        # If no explicit person bounding boxes detected, derive person envelopes from PPE items
+        if not persons and (helmets or vests or no_helmets or no_vests):
+            all_ppe_boxes = helmets + vests + no_helmets + no_vests
+            for item in all_ppe_boxes:
+                bx1, by1, bx2, by2 = item["box"]
+                pw = bx2 - bx1
+                ph = by2 - by1
+                # Estimate person bounding box around PPE item
+                est_px1 = max(0, bx1 - int(pw * 0.4))
+                est_py1 = max(0, by1 - int(ph * 0.2))
+                est_px2 = bx2 + int(pw * 0.4)
+                est_py2 = by1 + int(ph * 3.5)
+                persons.append({"box": [est_px1, est_py1, est_px2, est_py2], "confidence": item["confidence"]})
+
+        # Sort persons spatially from left to right (x1 ascending)
+        persons.sort(key=lambda p: p["box"][0])
 
         # 2. For each person, check associated PPE
         workers_compliance = []
@@ -115,8 +147,8 @@ class SafetyAgent:
         for idx, p in enumerate(persons, start=1):
             worker_id = f"WRK-{idx:02d}"
             px1, py1, px2, py2 = p["box"]
-            pw = px2 - px1
-            ph = py2 - py1
+            pw = max(1, px2 - px1)
+            ph = max(1, py2 - py1)
 
             # Head & Torso anchors for person
             head_box = [px1, py1, px2, int(py1 + ph * 0.35)]
@@ -126,18 +158,39 @@ class SafetyAgent:
             has_helmet = False
             helmet_conf = 0.0
             for h in helmets:
-                # Check overlap with head region or overall person box
-                if self._box_iou_or_containment(head_box, h["box"]) > 0.30 or self._box_iou_or_containment(p["box"], h["box"]) > 0.50:
+                if self._box_iou_or_containment(head_box, h["box"]) > 0.15 or self._box_iou_or_containment(p["box"], h["box"]) > 0.35:
                     has_helmet = True
                     helmet_conf = max(helmet_conf, h["confidence"])
+
+            # Check direct NO-Hardhat neural detections
+            has_explicit_no_helmet = False
+            for nh in no_helmets:
+                if self._box_iou_or_containment(head_box, nh["box"]) > 0.15 or self._box_iou_or_containment(p["box"], nh["box"]) > 0.35:
+                    has_explicit_no_helmet = True
+                    if not has_helmet:
+                        helmet_conf = max(helmet_conf, nh["confidence"])
+
+            if has_explicit_no_helmet and not has_helmet:
+                has_helmet = False
 
             # Check vest association
             has_vest = False
             vest_conf = 0.0
             for v in vests:
-                if self._box_iou_or_containment(torso_box, v["box"]) > 0.30 or self._box_iou_or_containment(p["box"], v["box"]) > 0.50:
+                if self._box_iou_or_containment(torso_box, v["box"]) > 0.15 or self._box_iou_or_containment(p["box"], v["box"]) > 0.35:
                     has_vest = True
                     vest_conf = max(vest_conf, v["confidence"])
+
+            # Check direct NO-Safety-Vest neural detections
+            has_explicit_no_vest = False
+            for nv in no_vests:
+                if self._box_iou_or_containment(torso_box, nv["box"]) > 0.15 or self._box_iou_or_containment(p["box"], nv["box"]) > 0.35:
+                    has_explicit_no_vest = True
+                    if not has_vest:
+                        vest_conf = max(vest_conf, nv["confidence"])
+
+            if has_explicit_no_vest and not has_vest:
+                has_vest = False
 
             # Determine compliance status
             detected_items = []
@@ -153,7 +206,12 @@ class SafetyAgent:
             else:
                 missing_items.append("Safety Vest")
 
-            if has_helmet and has_vest:
+            if p["confidence"] < 0.40:
+                decision_status = "needs_human_review"
+                violation_type = "needs_human_review"
+                base_risk = 30.0
+                risk_category = "Review"
+            elif has_helmet and has_vest:
                 decision_status = "compliant"
                 violation_type = "compliant"
                 base_risk = 10.0
@@ -215,6 +273,10 @@ class SafetyAgent:
         total_workers = len(workers_compliance)
         compliant_count = sum(1 for w in workers_compliance if w["decision_status"] == "compliant")
         violations_count = len(violations)
+        human_review_required = any(
+            w["decision_status"] == "needs_human_review" or w["person_confidence"] < 0.45
+            for w in workers_compliance
+        )
         
         if total_workers > 0:
             overall_safety_score = round((compliant_count / total_workers) * 100.0, 1)
@@ -229,9 +291,11 @@ class SafetyAgent:
             "compliant_workers": compliant_count,
             "violations_count": violations_count,
             "overall_safety_score": overall_safety_score,
+            "human_review_required": human_review_required,
             "workers_compliance": workers_compliance,
             "violations": violations,
-            "recommendations": recommendations
+            "recommendations": recommendations,
+            "site_hazards": hazards
         }
 
 

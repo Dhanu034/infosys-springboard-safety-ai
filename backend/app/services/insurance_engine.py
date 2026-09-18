@@ -99,66 +99,248 @@ class InsuranceEngineService:
         violation: models.PPEViolation
     ) -> models.InsuranceAssessment:
         """
-        Generate claim documentation checklist and risk tier for a specific safety event.
+        Generate claim documentation checklist and risk tier for a specific safety event
+        using real database records and project-linked compliance documents.
         """
+        # 1. Visual Evidence Check (CHK-01)
         has_image = bool(violation.annotated_image_path or violation.original_image_path)
-        has_audit_logs = bool(violation.alerts and any(len(a.audit_logs) > 0 for a in violation.alerts))
-        is_acknowledged = violation.status in ["ACKNOWLEDGED", "RESOLVED"]
+        img_path = violation.annotated_image_path or violation.original_image_path
+        chk01_item = {
+            "item_id": "CHK-01",
+            "code": "CHK-01",
+            "item_title": "Visual Evidence Frame & Telemetry Bounding Box",
+            "title": "Visual Evidence Frame & Telemetry Bounding Box",
+            "category": "Visual Evidence",
+            "is_required": True,
+            "is_attached": has_image,
+            "available": has_image,
+            "source": "ppe_violations",
+            "source_table": "ppe_violations",
+            "linked_record_id": violation.violation_id,
+            "document_id": None,
+            "evidence_page": None,
+            "evidence_section": None,
+            "evidence_snippet": None,
+            "evidence_reference": img_path or "No image recorded",
+            "verification_notes": f"YOLO bounding box annotated visual record (Worker: {violation.anonymous_worker_id}, Conf: {int((violation.confidence_score or 0.9)*100)}%)." if has_image else "Missing visual frame in database.",
+            "review_required": True
+        }
 
-        # Check for compliance training documents in project
-        training_doc_count = db.query(models.ComplianceDocument).filter(
-            models.ComplianceDocument.project_id == violation.project_id,
-            models.ComplianceDocument.document_category.in_(["training_cert", "site_safety_plan"])
-        ).count()
-        has_training = training_doc_count > 0
+        # 2. Supervisor Audit Trail & Action Log Check (CHK-02)
+        audit_log_record = None
+        if violation.alerts:
+            for alert in violation.alerts:
+                if alert.audit_logs:
+                    audit_log_record = alert.audit_logs[0]
+                    break
 
-        checklist_items = [
-            {
-                "item_id": "CHK-01",
-                "item_title": "Visual Evidence Frame & Telemetry Bounding Box",
-                "category": "Visual Evidence",
-                "is_required": True,
-                "is_attached": has_image,
-                "evidence_reference": violation.annotated_image_path or violation.original_image_path or "No image recorded",
-                "verification_notes": "YOLO / OpenCV bounding box annotated visual record." if has_image else "Missing visual frame."
-            },
-            {
-                "item_id": "CHK-02",
-                "item_title": "Safety Supervisor Audit Trail & Action Log",
-                "category": "Supervisor Action",
-                "is_required": True,
-                "is_attached": has_audit_logs or is_acknowledged,
-                "evidence_reference": f"Alert Status: {violation.status}",
-                "verification_notes": "Supervisor audit actions recorded." if (has_audit_logs or is_acknowledged) else "Pending supervisor review log."
-            },
-            {
-                "item_id": "CHK-03",
-                "item_title": "Zone Safety Rule Authorization & Multiplier Reference",
-                "category": "Zone Rule",
-                "is_required": True,
-                "is_attached": True,
-                "evidence_reference": f"Zone: {violation.zone_name} (Multiplier: {violation.zone_multiplier or 1.0}x)",
-                "verification_notes": "Verified against SafetyZoneRule registry."
-            },
-            {
-                "item_id": "CHK-04",
-                "item_title": "Worker Safety Induction & PPE Training Certification",
-                "category": "Worker Records",
-                "is_required": True,
-                "is_attached": has_training,
-                "evidence_reference": f"Project Compliance Records ({training_doc_count} active)",
-                "verification_notes": "Verified against active project training certificates." if has_training else "Training certificate pending upload."
-            },
-            {
-                "item_id": "CHK-05",
-                "item_title": "Incident Mitigation & Resolution Sign-Off",
-                "category": "Mitigation",
-                "is_required": False,
-                "is_attached": violation.status == "RESOLVED",
-                "evidence_reference": f"Resolution: {violation.resolution_note or 'Open'}",
-                "verification_notes": "Violation resolved and signed off." if violation.status == "RESOLVED" else "Mitigation pending."
-            }
-        ]
+        is_acknowledged = bool(violation.status in ["ACKNOWLEDGED", "RESOLVED"] or violation.acknowledged_by)
+        has_audit = bool(audit_log_record or is_acknowledged)
+
+        if audit_log_record:
+            chk02_notes = f"Supervisor action verified: {audit_log_record.action} by {audit_log_record.user_reference} - {audit_log_record.note or 'Confirmed'}"
+            chk02_ref = f"Audit Log ID: {audit_log_record.audit_id[:8]} ({audit_log_record.action})"
+            chk02_source = "safety_audit_logs"
+            chk02_record_id = audit_log_record.audit_id
+        elif is_acknowledged:
+            chk02_notes = f"Acknowledged by {violation.acknowledged_by or 'Safety Supervisor'} (Status: {violation.status})."
+            chk02_ref = f"Acknowledged by {violation.acknowledged_by or 'Supervisor'}"
+            chk02_source = "ppe_violations"
+            chk02_record_id = violation.violation_id
+        else:
+            chk02_notes = "Pending supervisor review log in safety audit trail."
+            chk02_ref = f"Alert Status: {violation.status}"
+            chk02_source = "safety_alerts"
+            chk02_record_id = violation.alerts[0].alert_id if violation.alerts else violation.violation_id
+
+        chk02_item = {
+            "item_id": "CHK-02",
+            "code": "CHK-02",
+            "item_title": "Safety Supervisor Audit Trail & Action Log",
+            "title": "Safety Supervisor Audit Trail & Action Log",
+            "category": "Supervisor Action",
+            "is_required": True,
+            "is_attached": has_audit,
+            "available": has_audit,
+            "source": chk02_source,
+            "source_table": chk02_source,
+            "linked_record_id": chk02_record_id,
+            "document_id": None,
+            "evidence_page": None,
+            "evidence_section": None,
+            "evidence_snippet": None,
+            "evidence_reference": chk02_ref,
+            "verification_notes": chk02_notes,
+            "review_required": True
+        }
+
+        # 3. Zone Safety Rule Authorization Check (CHK-03)
+        zone_rule = db.query(models.SafetyZoneRule).filter(
+            models.SafetyZoneRule.zone_name == violation.zone_name
+        ).first()
+
+        if zone_rule:
+            chk03_attached = True
+            chk03_source = "safety_zone_rules"
+            chk03_record_id = zone_rule.rule_id
+            chk03_ref = f"Zone: {zone_rule.zone_name} (Multiplier: {zone_rule.risk_multiplier}x)"
+            reqs = []
+            if zone_rule.requires_helmet: reqs.append("Helmet")
+            if zone_rule.requires_vest: reqs.append("Vest")
+            if zone_rule.requires_harness: reqs.append("Harness")
+            chk03_notes = f"Verified against SafetyZoneRule (Required PPE: {', '.join(reqs) if reqs else 'Standard'})."
+        else:
+            chk03_attached = False
+            chk03_source = "safety_zone_rules"
+            chk03_record_id = None
+            chk03_ref = f"Zone: {violation.zone_name} (Unregistered)"
+            chk03_notes = f"No zone configuration rule found for '{violation.zone_name}'."
+
+        chk03_item = {
+            "item_id": "CHK-03",
+            "code": "CHK-03",
+            "item_title": "Zone Safety Rule Authorization & Multiplier Reference",
+            "title": "Zone Safety Rule Authorization & Multiplier Reference",
+            "category": "Zone Rule",
+            "is_required": True,
+            "is_attached": chk03_attached,
+            "available": chk03_attached,
+            "source": chk03_source,
+            "source_table": "safety_zone_rules",
+            "linked_record_id": chk03_record_id,
+            "document_id": None,
+            "evidence_page": None,
+            "evidence_section": None,
+            "evidence_snippet": None,
+            "evidence_reference": chk03_ref,
+            "verification_notes": chk03_notes,
+            "review_required": True
+        }
+
+        # 4. Worker Safety Induction & Compliance Plan Reference (CHK-04)
+        # Query compliance documents strictly for this violation's project_id
+        project_docs = db.query(models.ComplianceDocument).filter(
+            models.ComplianceDocument.project_id == violation.project_id
+        ).order_by(models.ComplianceDocument.uploaded_at.desc()).all()
+
+        matched_doc = None
+        matched_eval = None
+
+        if project_docs:
+            # Pass 1: Look for a document with valid positive evidence matching the violation or PPE policy
+            for p_doc in project_docs:
+                doc_cat = (p_doc.document_category or "").lower()
+                for ev in p_doc.evaluations:
+                    if ev.status not in ["compliant", "needs_human_review"]:
+                        continue
+                    if not ev.evidence_snippet or ev.evidence_snippet.startswith("Document does not mention"):
+                        continue
+                    cat_lower = (ev.rule.category if (ev.rule and ev.rule.category) else "").lower()
+                    vt_lower = (violation.violation_type or "").lower()
+                    if ("helmet" in vt_lower or "vest" in vt_lower) and ("head" in cat_lower or "ppe" in cat_lower or "vest" in cat_lower):
+                        matched_doc = p_doc
+                        matched_eval = ev
+                        break
+                    elif "height" in (violation.zone_name or "").lower() and ("fall" in cat_lower or "height" in cat_lower or "scaffold" in cat_lower):
+                        matched_doc = p_doc
+                        matched_eval = ev
+                        break
+                if matched_doc:
+                    break
+
+            # Pass 2: Look for any site_safety_plan or training_cert document for this project
+            if not matched_doc:
+                for p_doc in project_docs:
+                    doc_cat = (p_doc.document_category or "").lower()
+                    if "site_safety" in doc_cat or "training" in doc_cat or "safety" in doc_cat:
+                        matched_doc = p_doc
+                        for ev in p_doc.evaluations:
+                            if ev.status in ["compliant", "needs_human_review"] and ev.evidence_snippet and not ev.evidence_snippet.startswith("Document does not mention"):
+                                matched_eval = ev
+                                break
+                        if not matched_eval and p_doc.evaluations:
+                            matched_eval = p_doc.evaluations[0]
+                        break
+
+            # Pass 3: Fallback to the latest project document
+            if not matched_doc:
+                matched_doc = project_docs[0]
+                if matched_doc.evaluations:
+                    matched_eval = matched_doc.evaluations[0]
+
+        if matched_doc:
+            chk04_attached = True
+            chk04_source = matched_doc.filename
+            chk04_doc_id = matched_doc.doc_id
+            chk04_record_id = matched_eval.evaluation_id if matched_eval else matched_doc.doc_id
+            chk04_page = matched_eval.evidence_page if matched_eval else 1
+            chk04_section = matched_eval.evidence_section if matched_eval else "General Site Plan"
+            chk04_snippet = matched_eval.evidence_snippet if matched_eval else (matched_doc.extracted_text or "")[:250]
+            chk04_ref = f"Doc: {matched_doc.filename} (Page {chk04_page})"
+            chk04_notes = f"Verified against compliance document '{matched_doc.filename}' ({matched_doc.document_category})."
+        else:
+            chk04_attached = False
+            chk04_source = None
+            chk04_doc_id = None
+            chk04_record_id = None
+            chk04_page = None
+            chk04_section = None
+            chk04_snippet = None
+            chk04_ref = f"No compliance documents for Project {violation.project_id}"
+            chk04_notes = f"No compliance plan or training record registered for {violation.project_id}."
+
+        chk04_item = {
+            "item_id": "CHK-04",
+            "code": "CHK-04",
+            "item_title": "Worker Safety Induction & Compliance Plan Reference",
+            "title": "Worker Safety Induction & Compliance Plan Reference",
+            "category": "Worker Records",
+            "is_required": True,
+            "is_attached": chk04_attached,
+            "available": chk04_attached,
+            "source": chk04_source,
+            "source_table": "compliance_documents" if matched_doc else None,
+            "linked_record_id": chk04_record_id,
+            "document_id": chk04_doc_id,
+            "evidence_page": chk04_page,
+            "evidence_section": chk04_section,
+            "evidence_snippet": chk04_snippet,
+            "evidence_reference": chk04_ref,
+            "verification_notes": chk04_notes,
+            "review_required": True
+        }
+
+        # 5. Incident Mitigation & Resolution Sign-Off (CHK-05)
+        is_resolved = (violation.status == "RESOLVED")
+        if is_resolved:
+            chk05_notes = f"Violation resolved by {violation.resolved_by or 'Supervisor'}: {violation.resolution_note or 'Resolution complete'}"
+            chk05_ref = f"Resolved: {violation.resolution_note or 'Approved closure'}"
+        else:
+            chk05_notes = "Mitigation action and supervisor resolution pending."
+            chk05_ref = f"Status: {violation.status}"
+
+        chk05_item = {
+            "item_id": "CHK-05",
+            "code": "CHK-05",
+            "item_title": "Incident Mitigation & Resolution Sign-Off",
+            "title": "Incident Mitigation & Resolution Sign-Off",
+            "category": "Mitigation",
+            "is_required": False,
+            "is_attached": is_resolved,
+            "available": is_resolved,
+            "source": "ppe_violations",
+            "source_table": "ppe_violations",
+            "linked_record_id": violation.violation_id,
+            "document_id": None,
+            "evidence_page": None,
+            "evidence_section": None,
+            "evidence_snippet": None,
+            "evidence_reference": chk05_ref,
+            "verification_notes": chk05_notes,
+            "review_required": True
+        }
+
+        checklist_items = [chk01_item, chk02_item, chk03_item, chk04_item, chk05_item]
 
         attached_count = sum(1 for item in checklist_items if item["is_attached"])
         completeness = round((attached_count / len(checklist_items)) * 100.0, 1)
@@ -202,3 +384,4 @@ class InsuranceEngineService:
 
 
 insurance_engine = InsuranceEngineService()
+

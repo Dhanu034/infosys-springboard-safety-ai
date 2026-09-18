@@ -11,6 +11,17 @@ export async function checkHealth() {
   }
 }
 
+export async function fetchModelInfo() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/safety/model-info`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.warn("Backend model-info check failed:", err.message);
+    return null;
+  }
+}
+
 export async function analyzeSafetyImage(file, projectId = "PRJ-101", zoneName = "General Work Zone", cameraId = "CAM-01") {
   const formData = new FormData();
   formData.append("file", file);
@@ -35,6 +46,9 @@ export async function analyzeSafetyImage(file, projectId = "PRJ-101", zoneName =
   }
   if (data.annotated_image_url && data.annotated_image_url.startsWith('/')) {
     data.annotated_image_url = `${API_BASE_URL}${data.annotated_image_url}`;
+  }
+  if (data.annotated_image && data.annotated_image.startsWith('/')) {
+    data.annotated_image = `${API_BASE_URL}${data.annotated_image}`;
   }
 
   return data;
@@ -150,6 +164,12 @@ export async function fetchComplianceDocuments(projectId = "PRJ-101", category =
 export async function fetchComplianceDocumentDetails(docId) {
   const res = await fetch(`${API_BASE_URL}/api/compliance/documents/${docId}`);
   if (!res.ok) throw new Error(`Failed to fetch document details (HTTP ${res.status})`);
+  return await res.json();
+}
+
+export async function fetchDocumentChecklist(docId) {
+  const res = await fetch(`${API_BASE_URL}/api/compliance/documents/${docId}/checklist`);
+  if (!res.ok) throw new Error(`Failed to fetch document checklist (HTTP ${res.status})`);
   return await res.json();
 }
 

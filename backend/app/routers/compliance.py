@@ -77,10 +77,12 @@ async def upload_compliance_document(
     
     return sc.ComplianceDocumentResponse(
         doc_id=doc_record.doc_id,
+        document_id=doc_record.doc_id,
         project_id=doc_record.project_id,
         filename=doc_record.filename,
         file_type=doc_record.file_type,
         document_category=doc_record.document_category,
+        category=doc_record.document_category,
         page_count=doc_record.page_count,
         extraction_method=doc_record.extraction_method,
         ocr_confidence=doc_record.ocr_confidence,
@@ -89,6 +91,7 @@ async def upload_compliance_document(
         expiry_date=doc_record.expiry_date,
         uploaded_at=doc_record.uploaded_at,
         status=doc_record.status,
+        processing_status=doc_record.status,
         extracted_text_preview=preview
     )
 
@@ -111,10 +114,12 @@ def get_compliance_documents(
         preview = d.extracted_text[:300] if d.extracted_text else "No text extracted."
         results.append(sc.ComplianceDocumentResponse(
             doc_id=d.doc_id,
+            document_id=d.doc_id,
             project_id=d.project_id,
             filename=d.filename,
             file_type=d.file_type,
             document_category=d.document_category,
+            category=d.document_category,
             page_count=d.page_count,
             extraction_method=d.extraction_method,
             ocr_confidence=d.ocr_confidence,
@@ -123,6 +128,7 @@ def get_compliance_documents(
             expiry_date=d.expiry_date,
             uploaded_at=d.uploaded_at,
             status=d.status,
+            processing_status=d.status,
             extracted_text_preview=preview
         ))
     return results
@@ -131,17 +137,21 @@ def get_compliance_documents(
 @router.get("/documents/{doc_id}", response_model=sc.ComplianceDocumentResponse)
 def get_compliance_document_details(doc_id: str, db: Session = Depends(get_db)):
     """Get single document metadata and text preview."""
-    doc = db.query(models.ComplianceDocument).filter(models.ComplianceDocument.doc_id == doc_id).first()
+    doc = db.query(models.ComplianceDocument).filter(
+        (models.ComplianceDocument.doc_id == doc_id)
+    ).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Compliance document not found")
     
     preview = doc.extracted_text[:500] if doc.extracted_text else "No text extracted."
     return sc.ComplianceDocumentResponse(
         doc_id=doc.doc_id,
+        document_id=doc.doc_id,
         project_id=doc.project_id,
         filename=doc.filename,
         file_type=doc.file_type,
         document_category=doc.document_category,
+        category=doc.document_category,
         page_count=doc.page_count,
         extraction_method=doc.extraction_method,
         ocr_confidence=doc.ocr_confidence,
@@ -150,8 +160,26 @@ def get_compliance_document_details(doc_id: str, db: Session = Depends(get_db)):
         expiry_date=doc.expiry_date,
         uploaded_at=doc.uploaded_at,
         status=doc.status,
+        processing_status=doc.status,
         extracted_text_preview=preview
     )
+
+
+@router.get("/documents/{document_id}/checklist", response_model=sc.DocumentChecklistResponse)
+def get_document_inspection_checklist(
+    document_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Generate dynamic document inspection checklist from the extracted document content and evaluations.
+    Does not use the Insurance Claim checklist.
+    """
+    doc = db.query(models.ComplianceDocument).filter(models.ComplianceDocument.doc_id == document_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail=f"Compliance document with id '{document_id}' not found")
+
+    checklist_data = compliance_engine.generate_document_checklist(db, doc)
+    return sc.DocumentChecklistResponse(**checklist_data)
 
 
 @router.delete("/documents/{doc_id}")
@@ -190,17 +218,20 @@ def get_compliance_evaluations(
     project_id: str = Query("PRJ-101"),
     status: Optional[str] = Query(None),
     doc_id: Optional[str] = Query(None),
+    document_id: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
     """
     Get all rule-based compliance evaluation records with page citations and evidence snippets.
     Supports filtering by status: compliant, non_compliant, missing_evidence, needs_human_review.
+    Supports filtering by specific doc_id / document_id.
     """
+    effective_doc_id = doc_id or document_id
     query = db.query(models.ComplianceEvaluation).filter(models.ComplianceEvaluation.project_id == project_id)
     if status:
         query = query.filter(models.ComplianceEvaluation.status == status)
-    if doc_id:
-        query = query.filter(models.ComplianceEvaluation.doc_id == doc_id)
+    if effective_doc_id:
+        query = query.filter(models.ComplianceEvaluation.doc_id == effective_doc_id)
 
     evals = query.order_by(desc(models.ComplianceEvaluation.evaluated_at)).all()
     results = []
@@ -213,10 +244,13 @@ def get_compliance_evaluations(
             evaluation_id=ev.evaluation_id,
             project_id=ev.project_id,
             doc_id=ev.doc_id,
+            document_id=ev.doc_id,
             document_filename=doc.filename if doc else "Reference Safety Record",
             rule_id=ev.rule_id,
             standard_code=rule.standard_code if rule else "OSHA/BOCW-REF",
+            rule_code=rule.standard_code if rule else "OSHA/BOCW-REF",
             source_name=rule.source_name if rule else "Standard Safety Regulation",
+            source=rule.source_name if rule else "Standard Safety Regulation",
             jurisdiction=rule.jurisdiction if rule else "Reference Rule Match — Human Verification Required",
             category=rule.category if rule else "General Safety",
             status=ev.status,

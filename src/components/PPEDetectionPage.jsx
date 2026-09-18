@@ -233,6 +233,28 @@ export default function PPEDetectionPage({ selectedProject }) {
           {analysisResult && (
             <div className="space-y-4 animate-in fade-in duration-300">
               
+              {/* Model & Human Review Status Bar */}
+              <div className="glass-panel p-3 border border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400">Model:</span>
+                  <span className="font-bold text-cyan-300 bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-500/30">
+                    {analysisResult.model_name || "Hansung-Cho/yolov8-ppe-detection"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400">Human Review:</span>
+                  {analysisResult.human_review_required ? (
+                    <span className="px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/40 font-bold flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" /> REQUIRED (Low Confidence / Ambiguity)
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 font-bold flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" /> VERIFIED (High Confidence)
+                    </span>
+                  )}
+                </div>
+              </div>
+
               {/* Summary KPIs Row */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="glass-panel p-3.5 border border-slate-800">
@@ -266,12 +288,50 @@ export default function PPEDetectionPage({ selectedProject }) {
               >
                 <div className="rounded-xl overflow-hidden border border-slate-800 bg-[#0b0f10]">
                   <img
-                    src={analysisResult.annotated_image_url}
+                    src={analysisResult.annotated_image || analysisResult.annotated_image_url}
                     alt="YOLO Detection Result"
                     className="w-full h-auto max-h-[420px] object-contain mx-auto"
                   />
                 </div>
               </ChartPanel>
+
+              {/* Real Model Detections Table */}
+              {analysisResult.detections && analysisResult.detections.length > 0 && (
+                <ChartPanel
+                  title={`Neural Detections (${analysisResult.detections.length} Objects)`}
+                  titleTa="நரம்பியல் கண்டறிதல் பட்டியல்"
+                  icon={Cpu}
+                >
+                  <div className="max-h-52 overflow-y-auto border border-slate-800 rounded-lg">
+                    <table className="w-full text-left text-xs font-mono">
+                      <thead className="bg-slate-900/80 text-slate-400 sticky top-0 border-b border-slate-800">
+                        <tr>
+                          <th className="p-2">#</th>
+                          <th className="p-2">Label</th>
+                          <th className="p-2">Confidence</th>
+                          <th className="p-2">Bounding Box [x1, y1, x2, y2]</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                        {analysisResult.detections.map((d, idx) => (
+                          <tr key={idx} className="hover:bg-slate-800/30">
+                            <td className="p-2 text-slate-500">{idx + 1}</td>
+                            <td className="p-2 font-bold text-cyan-300">{d.label || d.class}</td>
+                            <td className="p-2">
+                              <span className={`font-semibold ${d.confidence >= 0.75 ? 'text-emerald-400' : d.confidence >= 0.5 ? 'text-amber-400' : 'text-red-400'}`}>
+                                {(d.confidence * 100).toFixed(1)}%
+                              </span>
+                            </td>
+                            <td className="p-2 text-slate-400 text-[11px]">
+                              {d.bbox ? `[${d.bbox.x1}, ${d.bbox.y1}, ${d.bbox.x2}, ${d.bbox.y2}]` : JSON.stringify(d.box)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </ChartPanel>
+              )}
 
               {/* Per-Worker Compliance Cards */}
               <ChartPanel
@@ -299,13 +359,13 @@ export default function PPEDetectionPage({ selectedProject }) {
                         <div className="flex justify-between text-slate-300">
                           <span>Helmet Detected:</span>
                           <span className={w.has_helmet ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>
-                            {w.has_helmet ? 'YES' : 'MISSING'}
+                            {w.has_helmet ? `YES (${(w.helmet_confidence * 100).toFixed(0)}%)` : 'MISSING'}
                           </span>
                         </div>
                         <div className="flex justify-between text-slate-300">
                           <span>Vest Detected:</span>
                           <span className={w.has_vest ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>
-                            {w.has_vest ? 'YES' : 'MISSING'}
+                            {w.has_vest ? `YES (${(w.vest_confidence * 100).toFixed(0)}%)` : 'MISSING'}
                           </span>
                         </div>
                         <div className="flex justify-between text-slate-400 text-[11px] pt-1.5 border-t border-slate-800">
