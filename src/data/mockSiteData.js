@@ -37,6 +37,7 @@ export const MOCK_PROJECTS = [
 export const MOCK_SITE_ZONES = [
   {
     id: "ZONE-A",
+    projectId: "PRJ-101",
     name: "Zone A: Deep Excavation & Foundation",
     riskLevel: "CRITICAL",
     riskScore: 88,
@@ -52,6 +53,7 @@ export const MOCK_SITE_ZONES = [
   },
   {
     id: "ZONE-B",
+    projectId: "PRJ-101",
     name: "Zone B: Tower Crane 1 & Steel Erection",
     riskLevel: "HIGH",
     riskScore: 76,
@@ -67,6 +69,7 @@ export const MOCK_SITE_ZONES = [
   },
   {
     id: "ZONE-C",
+    projectId: "PRJ-101",
     name: "Zone C: High-Rise Scaffolding (Floors 18-24)",
     riskLevel: "HIGH",
     riskScore: 72,
@@ -82,6 +85,7 @@ export const MOCK_SITE_ZONES = [
   },
   {
     id: "ZONE-D",
+    projectId: "PRJ-101",
     name: "Zone D: Electrical Substation & Concrete Pouring",
     riskLevel: "MODERATE",
     riskScore: 45,
@@ -94,12 +98,44 @@ export const MOCK_SITE_ZONES = [
     },
     primaryHazard: "Live High-Voltage Exposure & Heat Exhaustion",
     coordinateGrid: { x: 60, y: 55, width: 30, height: 40 }
+  },
+  {
+    id: "ZONE-M1",
+    projectId: "PRJ-102",
+    name: "Zone M1: Underground Tunneling & Boring",
+    riskLevel: "HIGH",
+    riskScore: 68,
+    activeWorkers: 34,
+    activeEquipment: ["Tunnel Boring Machine TBM-01", "Grout Injection Pump"],
+    sensors: {
+      gasLevel: "CH4 0.02% (Normal)",
+      oxygenLevel: "20.8% (Good)",
+      tunnelConvergence: "1.2mm (Safe)"
+    },
+    primaryHazard: "Confined Space & Ventilation Fluctuation",
+    coordinateGrid: { x: 25, y: 30, width: 40, height: 35 }
+  },
+  {
+    id: "ZONE-M2",
+    projectId: "PRJ-102",
+    name: "Zone M2: Elevated Track Viaduct Pylons",
+    riskLevel: "MODERATE",
+    riskScore: 42,
+    activeWorkers: 28,
+    activeEquipment: ["Mobile Crane MC-15", "Aerial Scissor Lift"],
+    sensors: {
+      windGustSpeed: "22.0 km/h",
+      concreteCuringTemp: "29°C"
+    },
+    primaryHazard: "Working at Elevation & Heavy Segment Transport",
+    coordinateGrid: { x: 55, y: 50, width: 35, height: 35 }
   }
 ];
 
 export const MOCK_HAZARDS = [
   {
     id: "HZ-8091",
+    projectId: "PRJ-101",
     title: "Unstable Soil Slope Near Trench Edge",
     category: "Environmental",
     zoneId: "ZONE-A",
@@ -117,6 +153,7 @@ export const MOCK_HAZARDS = [
   },
   {
     id: "HZ-8092",
+    projectId: "PRJ-101",
     title: "High Wind Gusts Exceeding Crane Safe Operating Limit",
     category: "Equipment",
     zoneId: "ZONE-B",
@@ -134,6 +171,7 @@ export const MOCK_HAZARDS = [
   },
   {
     id: "HZ-8093",
+    projectId: "PRJ-101",
     title: "Missing Safety Mesh on 22nd Floor Edge",
     category: "Fall Hazard",
     zoneId: "ZONE-C",
@@ -151,6 +189,7 @@ export const MOCK_HAZARDS = [
   },
   {
     id: "HZ-8094",
+    projectId: "PRJ-101",
     title: "Exposed High Voltage Distribution Panel in Wet Zone",
     category: "Electrical",
     zoneId: "ZONE-D",
@@ -165,8 +204,35 @@ export const MOCK_HAZARDS = [
     description: "Temporary power distribution box door left unlatched near concrete wash-down pit with standing water.",
     aiRecommendation: "De-energize circuit breaker CB-04, seal water-proof enclosure, and elevate distribution box 50cm off ground level.",
     status: "IN_PROGRESS"
+  },
+  {
+    id: "HZ-8095",
+    projectId: "PRJ-102",
+    title: "Tunnel Air Extraction Flow Drop (Sector 2)",
+    category: "Environmental",
+    zoneId: "ZONE-M1",
+    zoneName: "Zone M1: Underground Tunneling",
+    severity: "HIGH",
+    likelihood: 3,
+    severityRating: 4,
+    exposure: 4,
+    riskScore: 68,
+    detectedAt: "18 mins ago",
+    sensorSource: "Gas & Airflow Monitor TBM-AF1",
+    description: "Auxiliary ventilation scrubber fan operating at 65% rated capacity. Micro-dust particulate concentration rising.",
+    aiRecommendation: "Engage secondary backup ventilation fan. Limit worker shift exposure to 45-minute rotations.",
+    status: "OPEN"
   }
 ];
+
+export function getProjectZones(projectId = "PRJ-101") {
+  return MOCK_SITE_ZONES.filter(z => z.projectId === projectId || (!z.projectId && projectId === "PRJ-101"));
+}
+
+export function getProjectHazards(projectId = "PRJ-101") {
+  return MOCK_HAZARDS.filter(h => h.projectId === projectId || (!h.projectId && projectId === "PRJ-101"));
+}
+
 
 export const MOCK_RISK_HEATMAP_DATA = {
   // 5x5 Matrix: Impact (1-5, Y-axis) vs Probability (1-5, X-axis)

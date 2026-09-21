@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ProjectProvider, useProject } from './context/ProjectContext';
 
 // Layout Components
 import SideNavBar from './components/layout/SideNavBar';
@@ -19,14 +20,13 @@ import InsurancePage from './components/pages/InsurancePage';
 // Agent Reasoning Drawer
 import AgentReasoningDrawer from './components/AgentReasoningDrawer';
 
-import { MOCK_PROJECTS, MOCK_SITE_ZONES, MOCK_HAZARDS } from './data/mockSiteData';
+import { getProjectZones, getProjectHazards } from './data/mockSiteData';
 import { siteRiskAgent } from './agents/SiteRiskAgent';
 import { Sparkles } from 'lucide-react';
 
-export default function App() {
-  const [projects] = useState(MOCK_PROJECTS);
-  const [selectedProject, setSelectedProject] = useState(MOCK_PROJECTS[0]);
-  const [zones, setZones] = useState(MOCK_SITE_ZONES);
+function AppContent() {
+  const { selectedProject, selectedProjectId, isSimulationMode } = useProject();
+  const [zones, setZones] = useState([]);
   const [hazards, setHazards] = useState([]);
   const [selectedHazardForTrace, setSelectedHazardForTrace] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
@@ -34,43 +34,45 @@ export default function App() {
   // Active Tab State (Exact Stitch Navigation Keys)
   const [activeTab, setActiveTab] = useState('COMMAND_CENTER');
 
-  // Initialize and evaluate hazards with Site Risk Agent on mount or project change
+  // Initialize and evaluate hazards with Site Risk Agent on project change
   useEffect(() => {
-    const evaluated = siteRiskAgent.evaluateHazards(MOCK_HAZARDS);
+    const projHazards = getProjectHazards(selectedProjectId);
+    const evaluated = siteRiskAgent.evaluateHazards(projHazards);
     setHazards(evaluated);
-  }, [selectedProject]);
+    setZones(getProjectZones(selectedProjectId));
+  }, [selectedProjectId]);
 
   // Handle Refresh
   const handleRefreshPipeline = () => {
-    const freshEvaluated = siteRiskAgent.evaluateHazards(hazards);
+    const projHazards = getProjectHazards(selectedProjectId);
+    const freshEvaluated = siteRiskAgent.evaluateHazards(hazards.length > 0 ? hazards : projHazards);
     setHazards(freshEvaluated);
-    showToast("Site Risk Agent re-evaluated all active hazards against OSHA standards.");
+    showToast(`Site Risk Agent re-evaluated hazards for ${selectedProject.name}.`);
   };
 
   // Handle Event Simulation
   const handleTriggerSimulatedEvent = (eventType) => {
     const result = siteRiskAgent.processSimulatedEvent(eventType, hazards);
     if (result && result.newHazard) {
-      const updatedHazardList = [result.newHazard, ...hazards];
+      const newSimHazard = {
+        ...result.newHazard,
+        projectId: selectedProjectId,
+        source: 'simulator'
+      };
+      const updatedHazardList = [newSimHazard, ...hazards];
       const newlyEvaluated = siteRiskAgent.evaluateHazards(updatedHazardList);
       setHazards(newlyEvaluated);
       showToast(result.logMessage);
-
-      // Dynamically bump project overall risk score
-      setSelectedProject(prev => ({
-        ...prev,
-        overallRiskScore: Math.min(98, prev.overallRiskScore + 5)
-      }));
     }
   };
 
   // Handle Reset
   const handleResetFeed = () => {
-    const initialEvaluated = siteRiskAgent.evaluateHazards(MOCK_HAZARDS);
+    const projHazards = getProjectHazards(selectedProjectId);
+    const initialEvaluated = siteRiskAgent.evaluateHazards(projHazards);
     setHazards(initialEvaluated);
-    setZones(MOCK_SITE_ZONES);
-    setSelectedProject(MOCK_PROJECTS[0]);
-    showToast("Reset simulation feed to baseline site telemetry state.");
+    setZones(getProjectZones(selectedProjectId));
+    showToast(`Reset simulation feed to baseline state for ${selectedProject.name}.`);
   };
 
   const showToast = (msg) => {
@@ -91,9 +93,6 @@ export default function App() {
 
       {/* 2. Top Navigation Bar */}
       <TopNavBar
-        selectedProject={selectedProject}
-        setSelectedProject={setSelectedProject}
-        projects={projects}
         hazardsCount={hazards.length}
         onRefresh={handleRefreshPipeline}
         activeTab={activeTab}
@@ -182,8 +181,7 @@ export default function App() {
           <ExecutiveReportsPage />
         )}
 
-
-        {/* Tab 9: Settings / Support */}
+        {/* Tab 10: Settings / Support */}
         {(activeTab === 'SETTINGS' || activeTab === 'SUPPORT') && (
           <div className="glass-panel p-8 rounded-2xl border border-[#3c494c]/30 text-center space-y-3">
             <h3 className="text-lg font-bold text-[#e0e3e5] font-sans">BuildSure AI System Configuration</h3>
@@ -207,3 +205,12 @@ export default function App() {
     </div>
   );
 }
+
+export default function App() {
+  return (
+    <ProjectProvider>
+      <AppContent />
+    </ProjectProvider>
+  );
+}
+

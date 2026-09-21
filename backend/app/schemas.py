@@ -124,15 +124,17 @@ class SafetyAnalysisResponse(BaseModel):
     disclaimer: str = "AI detections are decision-support signals and require safety supervisor verification."
 
 class SafetySummaryResponse(BaseModel):
-    total_workers_monitored: int
-    helmet_compliance_rate: float
-    vest_compliance_rate: float
-    overall_ppe_compliance_rate: float
-    open_violations: int
-    critical_violations: int
-    safety_score: float
-    violations_by_type: dict
-    violations_by_zone: dict
-    alert_status_distribution: dict
-    daily_trend_data: List[dict]
-    recent_violations: List[PPEViolationSchema]
+    project_id: str
+    has_data: bool = False
+    total_workers_monitored: int = 0
+    helmet_compliance_rate: Optional[float] = None
+    vest_compliance_rate: Optional[float] = None
+    overall_ppe_compliance_rate: Optional[float] = None
+    open_violations: int = 0
+    critical_violations: int = 0
+    safety_score: Optional[float] = None
+    violations_by_type: dict = {}
+    violations_by_zone: dict = {}
+    alert_status_distribution: dict = {}
+    daily_trend_data: List[dict] = []
+    recent_violations: List[PPEViolationSchema] = []

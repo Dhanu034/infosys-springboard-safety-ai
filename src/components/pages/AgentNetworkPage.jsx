@@ -1,5 +1,6 @@
 import React from 'react';
 import { Bot, Video, FileCheck, FolderCheck, ShieldAlert, Cpu, Activity, Sparkles, HardHat, FileText, Scale } from 'lucide-react';
+import { useProject } from '../../context/ProjectContext';
 
 /**
  * AgentNetworkPage Component (Exact Stitch Image 1 Layout)
@@ -7,14 +8,21 @@ import { Bot, Video, FileCheck, FolderCheck, ShieldAlert, Cpu, Activity, Sparkle
  * Input Data streams (CCTV, Inspection, Docs), and Autonomous Agents.
  */
 export default function AgentNetworkPage() {
+  const { selectedProject, selectedProjectId } = useProject();
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-[#e0e3e5] font-sans">Agent Network Architecture</h2>
+        <div className="flex items-center gap-2.5">
+          <h2 className="text-2xl font-bold tracking-tight text-[#e0e3e5] font-sans">Agent Network Architecture</h2>
+          <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-[#1d2022] text-[#859397] border border-[#3c494c]/40">
+            [AGENT TOPOLOGY]
+          </span>
+        </div>
         <p className="text-xs font-mono text-[#859397] mt-0.5 tracking-wider">
-          AUTONOMOUS MULTI-AGENT TOPOLOGY & ORCHESTRATION GRAPH
+          AUTONOMOUS MULTI-AGENT TOPOLOGY & ORCHESTRATION GRAPH // {selectedProject?.name || "PROJECT ALPHA"} ({selectedProjectId})
         </p>
       </div>
 

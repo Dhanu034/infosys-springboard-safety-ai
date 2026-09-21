@@ -276,3 +276,93 @@ export async function submitClaimHumanReview(assessmentId, reviewedBy = "Senior 
   return await res.json();
 }
 
+// =====================================================================
+// Milestone 4: Reporting Intelligence API Helpers
+// =====================================================================
+
+export async function fetchReportProjectSummary(projectId = "PRJ-101", fromDate = null, toDate = null, role = "Executive") {
+  const params = new URLSearchParams({ project_id: projectId, role });
+  if (fromDate) params.append("from_date", fromDate);
+  if (toDate) params.append("to_date", toDate);
+
+  const res = await fetch(`${API_BASE_URL}/api/reports/project-summary?${params.toString()}`);
+  if (!res.ok) throw new Error(`Failed to fetch executive report summary (HTTP ${res.status})`);
+  return await res.json();
+}
+
+export async function fetchReportRisk(projectId = "PRJ-101", fromDate = null, toDate = null, role = "Executive") {
+  const params = new URLSearchParams({ project_id: projectId, role });
+  if (fromDate) params.append("from_date", fromDate);
+  if (toDate) params.append("to_date", toDate);
+
+  const res = await fetch(`${API_BASE_URL}/api/reports/risk?${params.toString()}`);
+  if (!res.ok) throw new Error(`Failed to fetch site risk report (HTTP ${res.status})`);
+  return await res.json();
+}
+
+export async function fetchReportSafety(projectId = "PRJ-101", fromDate = null, toDate = null, role = "Safety Officer") {
+  const params = new URLSearchParams({ project_id: projectId, role });
+  if (fromDate) params.append("from_date", fromDate);
+  if (toDate) params.append("to_date", toDate);
+
+  const res = await fetch(`${API_BASE_URL}/api/reports/safety?${params.toString()}`);
+  if (!res.ok) throw new Error(`Failed to fetch PPE safety report (HTTP ${res.status})`);
+  return await res.json();
+}
+
+export async function fetchReportCompliance(projectId = "PRJ-101", fromDate = null, toDate = null, role = "Compliance Auditor") {
+  const params = new URLSearchParams({ project_id: projectId, role });
+  if (fromDate) params.append("from_date", fromDate);
+  if (toDate) params.append("to_date", toDate);
+
+  const res = await fetch(`${API_BASE_URL}/api/reports/compliance?${params.toString()}`);
+  if (!res.ok) throw new Error(`Failed to fetch compliance report (HTTP ${res.status})`);
+  return await res.json();
+}
+
+export async function fetchReportIncidents(projectId = "PRJ-101", fromDate = null, toDate = null, role = "Safety Officer") {
+  const params = new URLSearchParams({ project_id: projectId, role });
+  if (fromDate) params.append("from_date", fromDate);
+  if (toDate) params.append("to_date", toDate);
+
+  const res = await fetch(`${API_BASE_URL}/api/reports/incidents-alerts?${params.toString()}`);
+  if (!res.ok) throw new Error(`Failed to fetch incidents and alerts report (HTTP ${res.status})`);
+  return await res.json();
+}
+
+export async function fetchReportInsurance(projectId = "PRJ-101", fromDate = null, toDate = null, role = "Underwriter") {
+  const params = new URLSearchParams({ project_id: projectId, role });
+  if (fromDate) params.append("from_date", fromDate);
+  if (toDate) params.append("to_date", toDate);
+
+  const res = await fetch(`${API_BASE_URL}/api/reports/insurance?${params.toString()}`);
+  if (!res.ok) throw new Error(`Failed to fetch insurance exposure report (HTTP ${res.status})`);
+  return await res.json();
+}
+
+export async function downloadReportExport(projectId = "PRJ-101", reportType = "project_summary", fromDate = null, toDate = null, role = "Executive", format = "json") {
+  const params = new URLSearchParams({ project_id: projectId, report_type: reportType, role, format });
+  if (fromDate) params.append("from_date", fromDate);
+  if (toDate) params.append("to_date", toDate);
+
+  const url = `${API_BASE_URL}/api/reports/export?${params.toString()}`;
+  if (format === "json") {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Failed to export JSON (HTTP ${res.status})`);
+    return await res.json();
+  } else {
+    // CSV or HTML
+    window.open(url, '_blank');
+  }
+}
+
+export async function fetchReportAuditLogs(projectId = null) {
+  const params = new URLSearchParams();
+  if (projectId) params.append("project_id", projectId);
+
+  const res = await fetch(`${API_BASE_URL}/api/reports/audit-logs?${params.toString()}`);
+  if (!res.ok) throw new Error(`Failed to fetch report audit logs (HTTP ${res.status})`);
+  return await res.json();
+}
+
+

@@ -7,6 +7,7 @@ import { analyzeSafetyImage } from '../../services/api';
  * Calibrated YOLO v8x Vision Overlay & Synchronized PPE Telemetry Dashboard.
  */
 export default function PPESafetyPage({ selectedProject }) {
+  const projectId = selectedProject?.id || "PRJ-101";
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -139,8 +140,7 @@ export default function PPESafetyPage({ selectedProject }) {
       setSelectedFile(file);
       setPreviewUrl(sampleUrl);
 
-      const prjId = selectedProject?.id || "PROJECT-ALPHA";
-      const data = await analyzeSafetyImage(file, prjId, "Scaffold Zone B");
+      const data = await analyzeSafetyImage(file, projectId, "Scaffold Zone B");
       setAnalysisResult(data);
     } catch (err) {
       console.error(err);
@@ -157,8 +157,7 @@ export default function PPESafetyPage({ selectedProject }) {
     setErrorMsg(null);
 
     try {
-      const prjId = selectedProject?.id || "PROJECT-ALPHA";
-      const data = await analyzeSafetyImage(selectedFile, prjId, "Scaffold Zone B");
+      const data = await analyzeSafetyImage(selectedFile, projectId, "Scaffold Zone B");
       setAnalysisResult(data);
     } catch (err) {
       console.error(err);
@@ -175,14 +174,19 @@ export default function PPESafetyPage({ selectedProject }) {
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-[#e0e3e5] font-sans flex items-center gap-2.5">
-            <span>PPE Safety Detection</span>
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-2xl font-bold tracking-tight text-[#e0e3e5] font-sans">
+              PPE Safety Detection
+            </h2>
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
               YOLO v8x Calibrated
             </span>
-          </h2>
+            <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-[#1d2022] text-[#859397] border border-[#3c494c]/40">
+              [YOLO MODEL]
+            </span>
+          </div>
           <p className="text-xs font-mono text-[#859397] mt-0.5 tracking-wider">
-            Real-time computer vision analysis with strict head-and-torso spatial anchor calibration.
+            Real-time computer vision analysis with strict head-and-torso spatial anchor calibration // {selectedProject?.name || "PROJECT ALPHA"} ({projectId})
           </p>
         </div>
 

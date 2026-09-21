@@ -206,3 +206,21 @@ class InsuranceAssessment(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     disclaimer = Column(String(255), default="Internal safety decision-support estimate only. Does not represent actual insurance policy terms, premiums, or claim settlements.")
 
+
+# =====================================================================
+# Milestone 4: Reporting Intelligence & Audit Models
+# =====================================================================
+
+class ReportAuditLog(Base):
+    __tablename__ = "report_audit_logs"
+
+    log_id = Column(String(36), primary_key=True, default=generate_uuid)
+    project_id = Column(String(50), nullable=False, default="PRJ-101")
+    report_type = Column(String(50), nullable=False) # executive_summary, site_risk, ppe_safety, compliance, incidents_alerts, insurance
+    user_role = Column(String(50), nullable=False, default="Executive") # Executive, Safety Officer, Compliance Auditor, Underwriter
+    from_date = Column(DateTime, nullable=True)
+    to_date = Column(DateTime, nullable=True)
+    export_format = Column(String(20), nullable=False, default="json") # view, json, csv, html
+    generated_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+

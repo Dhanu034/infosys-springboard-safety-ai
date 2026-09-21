@@ -192,9 +192,15 @@ export default function CompliancePage({ selectedProject }) {
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/10 text-cyan-300 border border-cyan-400/30">
               AGENT VIGILANCE M3
             </span>
+            <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-[#1d2022] text-[#859397] border border-[#3c494c]/40">
+              [IMPORTED PDF]
+            </span>
+            <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-[#1d2022] text-[#859397] border border-[#3c494c]/40">
+              [DATABASE]
+            </span>
           </div>
           <p className="text-xs font-mono text-[#859397] mt-1 tracking-wide">
-            DOCUMENT-SPECIFIC OSHA 1926 & BOCW 1998 RULE MATCHING // {selectedProject?.name || "PROJECT ALPHA"}
+            DOCUMENT-SPECIFIC OSHA 1926 & BOCW 1998 RULE MATCHING // {selectedProject?.name || "PROJECT ALPHA"} ({projectId})
           </p>
         </div>
 
@@ -613,23 +619,29 @@ export default function CompliancePage({ selectedProject }) {
             </div>
 
             <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-              {schedules.map(s => {
-                let badge = "text-cyan-400 bg-cyan-500/10 border-cyan-400/20";
-                if (s.status === 'OVERDUE') badge = "text-rose-400 bg-rose-500/10 border-rose-400/20";
-                if (s.status === 'DUE_SOON') badge = "text-amber-400 bg-amber-500/10 border-amber-400/20";
+              {schedules.length === 0 ? (
+                <div className="py-6 text-center text-[#859397] text-xs font-mono">
+                  No upcoming inspections scheduled.
+                </div>
+              ) : (
+                schedules.map(s => {
+                  let badge = "text-cyan-400 bg-cyan-500/10 border-cyan-400/20";
+                  if (s.status === 'OVERDUE') badge = "text-rose-400 bg-rose-500/10 border-rose-400/20";
+                  if (s.status === 'DUE_SOON') badge = "text-amber-400 bg-amber-500/10 border-amber-400/20";
 
-                return (
-                  <div key={s.schedule_id} className="p-2.5 rounded-lg bg-[#101415]/70 border border-[#3c494c]/20 flex items-center justify-between text-xs font-mono">
-                    <div>
-                      <p className="text-[#e0e3e5] font-semibold">{s.item_title}</p>
-                      <p className="text-[10px] text-[#859397]">{s.category} • {s.days_until_due}d remaining</p>
+                  return (
+                    <div key={s.schedule_id} className="p-2.5 rounded-lg bg-[#101415]/70 border border-[#3c494c]/20 flex items-center justify-between text-xs font-mono">
+                      <div>
+                        <p className="text-[#e0e3e5] font-semibold">{s.item_title}</p>
+                        <p className="text-[10px] text-[#859397]">{s.category} • {s.days_until_due}d remaining</p>
+                      </div>
+                      <span className={`text-[10px] px-2 py-0.5 rounded border font-bold ${badge}`}>
+                        {s.status}
+                      </span>
                     </div>
-                    <span className={`text-[10px] px-2 py-0.5 rounded border font-bold ${badge}`}>
-                      {s.status}
-                    </span>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
 

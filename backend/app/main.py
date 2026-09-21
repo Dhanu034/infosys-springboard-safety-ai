@@ -1,4 +1,11 @@
 import os
+import sys
+
+# Ensure backend directory is in sys.path
+backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -6,15 +13,15 @@ from fastapi.staticfiles import StaticFiles
 from app.config import settings
 from app.database import engine, Base, SessionLocal
 from app import models
-from app.routers import safety, compliance, insurance
+from app.routers import safety, compliance, insurance, reports
 
 # Create Database Tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="BuildSure AI — Safety & Compliance Intelligence API",
-    description="Backend service for YOLO Worker PPE Detection, SafetyAgent, Compliance Regulation Engine, and Insurance Intelligence (Milestones 2 & 3)",
-    version="3.0.0"
+    description="Backend service for YOLO Worker PPE Detection, SafetyAgent, Compliance Regulation Engine, Insurance Intelligence, and Reporting Intelligence (Milestones 2–4)",
+    version="4.0.0"
 )
 
 @app.get("/")
@@ -46,10 +53,11 @@ app.add_middleware(
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 app.mount("/results", StaticFiles(directory=settings.RESULTS_DIR), name="results")
 
-# Include Routers (Safety remains isolated and untouched; Compliance and Insurance added)
+# Include Routers
 app.include_router(safety.router)
 app.include_router(compliance.router)
 app.include_router(insurance.router)
+app.include_router(reports.router)
 
 # Seed Zone Rules and Regulatory Standards on Startup if empty
 @app.on_event("startup")

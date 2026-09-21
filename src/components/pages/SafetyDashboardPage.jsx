@@ -1,34 +1,70 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, ShieldAlert, Users, AlertTriangle, CheckCircle2, Filter, Eye, RefreshCw, Layers, HardHat, MapPin, ChevronRight } from 'lucide-react';
-import { fetchSafetySummary, fetchViolations, resolveAlert } from '../../services/api';
+import { 
+  Activity, 
+  ShieldAlert, 
+  Users, 
+  AlertTriangle, 
+  CheckCircle2, 
+  Filter, 
+  Eye, 
+  RefreshCw, 
+  Layers, 
+  HardHat, 
+  MapPin, 
+  ChevronRight,
+  Database,
+  Info
+} from 'lucide-react';
+import { fetchSafetySummary, fetchViolations } from '../../services/api';
+import { useProject } from '../../context/ProjectContext';
 
 /**
- * SafetyDashboardPage Component (Exact Stitch Image 3 Right Layout)
- * Open Violations 42, Critical Alerts 07, Safety Score 86%,
- * Zone Heatmap blueprint overlay, PPE Compliance concentric gauge 78%, Recent Violations Feed table.
+ * SafetyDashboardPage Component
+ * Displays project-filtered database KPIs, dynamic PPE compliance concentric gauge,
+ * zone violation breakdown, and live recent violations feed without static fallbacks.
  */
-export default function SafetyDashboardPage({ selectedProject }) {
+export default function SafetyDashboardPage() {
+  const { selectedProject, selectedProjectId, isSimulationMode } = useProject();
   const [summary, setSummary] = useState(null);
   const [violations, setViolations] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const loadData = async () => {
+    if (!selectedProjectId) return;
     setIsLoading(true);
     try {
-      const sum = await fetchSafetySummary(selectedProject?.id || 'PROJECT-ALPHA');
+      const [sum, vios] = await Promise.all([
+        fetchSafetySummary(selectedProjectId).catch(() => null),
+        fetchViolations({ projectId: selectedProjectId }).catch(() => [])
+      ]);
       setSummary(sum);
-      const vios = await fetchViolations({ projectId: selectedProject?.id || 'PROJECT-ALPHA' });
-      setViolations(vios);
+      setViolations(vios || []);
     } catch (e) {
-      console.error(e);
+      console.error("Safety dashboard load error:", e);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
+    setSummary(null);
+    setViolations([]);
     loadData();
-  }, [selectedProject]);
+  }, [selectedProjectId]);
+
+  const hasData = summary && summary.has_data && summary.safety_score !== null;
+  const helmetRate = summary?.helmet_compliance_rate ?? 0;
+  const vestRate = summary?.vest_compliance_rate ?? 0;
+  const overallRate = summary?.overall_ppe_compliance_rate;
+
+  // Concentric circle stroke math
+  // Outer (radius 44): circumference = 2 * PI * 44 ≈ 276.46
+  const outerCircumference = 2 * Math.PI * 44;
+  const outerOffset = hasData ? outerCircumference - (helmetRate / 100) * outerCircumference : outerCircumference;
+
+  // Middle (radius 40): circumference = 2 * PI * 40 ≈ 251.33
+  const middleCircumference = 2 * Math.PI * 40;
+  const middleOffset = hasData ? middleCircumference - (vestRate / 100) * middleCircumference : middleCircumference;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -36,13 +72,19 @@ export default function SafetyDashboardPage({ selectedProject }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-[#e0e3e5] font-sans">Safety Intelligence Dashboard</h2>
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-2xl font-bold tracking-tight text-[#e0e3e5] font-sans">Safety Intelligence Dashboard</h2>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-500/40">
+              DATABASE
+            </span>
+          </div>
           <p className="text-xs font-mono text-[#859397] mt-0.5 tracking-wider uppercase">
-            SITE: B-102 | TIMESTAMP: {new Date().toISOString().slice(0, 19).replace('T', ' ')}Z
+            PROJECT: <span className="text-cyan-300 font-bold">{selectedProject?.name || selectedProjectId}</span> | ID: {selectedProjectId}
           </p>
         </div>
         <button
           onClick={loadData}
+          title="Refresh Dashboard"
           className="p-2 rounded-lg bg-[#191c1e] text-[#859397] hover:text-cyan-300 border border-[#3c494c]/30 self-start sm:self-auto cursor-pointer"
         >
           <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -61,10 +103,12 @@ export default function SafetyDashboardPage({ selectedProject }) {
           </div>
           <div className="my-2">
             <span className="text-4xl font-extrabold font-mono text-[#e0e3e5]">
-              {summary?.open_violations || 42}
+              {summary ? summary.open_violations : 0}
             </span>
           </div>
-          <p className="text-[11px] font-mono text-red-400">+12% from last shift</p>
+          <p className="text-[11px] font-mono text-red-400">
+            {hasData ? `${summary.open_violations} active violation(s) require action` : "No open violations recorded"}
+          </p>
         </div>
 
         {/* KPI 2: Critical Alerts */}
@@ -76,10 +120,12 @@ export default function SafetyDashboardPage({ selectedProject }) {
           </div>
           <div className="my-2">
             <span className="text-4xl font-extrabold font-mono text-[#ffb77d]">
-              {summary?.critical_violations !== undefined ? String(summary.critical_violations).padStart(2, '0') : '07'}
+              {summary ? String(summary.critical_violations).padStart(2, '0') : '00'}
             </span>
           </div>
-          <p className="text-[11px] font-mono text-amber-400">Require immediate action</p>
+          <p className="text-[11px] font-mono text-amber-400">
+            {hasData && summary.critical_violations > 0 ? "Immediate supervisor escalation required" : "0 critical alarms active"}
+          </p>
         </div>
 
         {/* KPI 3: Safety Score */}
@@ -91,63 +137,75 @@ export default function SafetyDashboardPage({ selectedProject }) {
           </div>
           <div className="my-2">
             <span className="text-4xl font-extrabold font-mono text-cyan-300">
-              {summary?.safety_score ? `${summary.safety_score}%` : '86%'}
+              {hasData ? `${summary.safety_score}%` : 'N/A'}
             </span>
           </div>
-          <p className="text-[11px] font-mono text-[#859397]">Target: 95%</p>
+          <p className="text-[11px] font-mono text-[#859397]">
+            {hasData ? "Dynamic Actuarial Safety Rating" : "No safety observation records"}
+          </p>
         </div>
 
       </div>
 
-      {/* Middle Row: Zone Heatmap (Span 8) & PPE Compliance Concentric Gauge (Span 4) */}
+      {/* Middle Row: Zone Breakdown & PPE Compliance Concentric Gauge */}
       <div className="grid grid-cols-12 gap-6">
         
-        {/* Zone Heatmap Floorplan */}
-        <div className="col-span-12 lg:col-span-8 glass-panel p-5 rounded-xl border border-[#3c494c]/30 flex flex-col justify-between h-[420px]">
+        {/* Zone Breakdown Panel (Span 8) */}
+        <div className="col-span-12 lg:col-span-8 glass-panel p-5 rounded-xl border border-[#3c494c]/30 flex flex-col justify-between min-h-[380px]">
           <div className="flex items-center justify-between mb-3 border-l-4 border-cyan-400 pl-3">
-            <h3 className="text-sm font-bold text-[#e0e3e5] font-sans">Zone Heatmap</h3>
+            <div>
+              <h3 className="text-sm font-bold text-[#e0e3e5] font-sans">Zone Safety Breakdown</h3>
+              <p className="text-[11px] font-mono text-[#859397]">Active violation density across project sectors</p>
+            </div>
             <span className="text-[10px] font-mono text-[#859397] bg-[#101415] px-2 py-0.5 rounded border border-[#3c494c]/40">
-              LEVEL 4 - SECTOR B
+              {selectedProjectId}
             </span>
           </div>
 
-          {/* Blueprint Thermal Overlay Graphic with exact Stitch asset */}
-          <div className="relative rounded-lg overflow-hidden border border-[#3c494c]/40 bg-[#0b121e] flex-1 my-1">
-            <img
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuCg0ICQ82MtPl7Z20Qcn6s_SB1rR-sp35N6IVFaIvLDee99QL0uEfpCC0jY2bjA9SaaKuO5e0XepQC7jBXGIKQW7lQwL9HyPeWUTt9hGcH8bomrI2d-VUp61aBzxOU1CcpUKUfyUTBFgFN48mAEU04hN7kpDAVhQ-0r8Y_UWBrW1KR7XBc89FMhXlyR9TTXl-6nhPvjM0MqfiFwKDW3xkR0qTt-cM-5E5B9PUiRgnutVjLJR9h_R7OA"
-              alt="Floorplan Heatmap"
-              className="w-full h-full object-cover opacity-85 mix-blend-screen"
-              onError={(e) => {
-                e.target.src = "https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=1200&q=80";
-              }}
-            />
-            {/* Crosshairs */}
-            <div className="absolute top-1/2 left-0 w-full h-[1px] bg-cyan-400/30"></div>
-            <div className="absolute top-0 left-1/2 w-[1px] h-full bg-cyan-400/30"></div>
-            
-            {/* Thermal Hotspots */}
-            <div className="absolute top-1/3 left-1/4 w-20 h-20 bg-red-500/40 rounded-full blur-xl pointer-events-none animate-pulse"></div>
-            <div className="absolute top-2/3 right-1/4 w-28 h-28 bg-amber-500/40 rounded-full blur-xl pointer-events-none"></div>
-            
-            {/* Tactical Marker */}
-            <div className="absolute top-1/3 left-1/4 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
-              <MapPin className="h-5 w-5 text-red-500 font-bold" />
-              <span className="text-[10px] font-mono bg-red-950/90 text-red-300 px-1.5 py-0.5 border border-red-500/50 rounded mt-0.5 font-bold">
-                Z-12
-              </span>
-            </div>
+          {/* Zone items */}
+          <div className="space-y-3 my-auto">
+            {summary && summary.violations_by_zone && Object.keys(summary.violations_by_zone).length > 0 ? (
+              Object.entries(summary.violations_by_zone).map(([zoneName, count]) => (
+                <div key={zoneName} className="bg-[#101415]/80 p-3.5 rounded-lg border border-[#3c494c]/30 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <MapPin className="h-4 w-4 text-cyan-400" />
+                    <span className="text-xs font-bold text-slate-200">{zoneName}</span>
+                  </div>
+                  <div className="flex items-center gap-3 font-mono text-xs">
+                    <span className="text-[#859397]">Violations: <strong className={count > 0 ? "text-amber-400" : "text-emerald-400"}>{count}</strong></span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      count > 0 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    }`}>
+                      {count > 0 ? 'ATTENTION' : 'CLEAR'}
+                    </span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="p-8 text-center border border-dashed border-[#3c494c]/30 rounded-lg">
+                <Info className="h-5 w-5 text-slate-500 mx-auto mb-1.5" />
+                <p className="text-xs font-mono text-slate-400">No zone violation statistics available for {selectedProjectId}.</p>
+                <p className="text-[10px] font-mono text-slate-500 mt-0.5">Upload images or run inspections to generate spatial data.</p>
+              </div>
+            )}
+          </div>
+
+          <div className="pt-3 border-t border-[#3c494c]/30 flex items-center justify-between text-xs font-mono text-[#859397]">
+            <span>Monitored Personnel: <strong className="text-slate-200">{summary?.total_workers_monitored || 0}</strong></span>
+            <span>Total Logged Records: <strong className="text-slate-200">{violations.length}</strong></span>
           </div>
         </div>
 
-        {/* PPE Compliance Concentric Circles Chart */}
-        <div className="col-span-12 lg:col-span-4 glass-panel p-5 rounded-xl border border-[#3c494c]/30 flex flex-col justify-between h-[420px]">
-          <div className="flex items-center gap-2 mb-2 border-l-4 border-cyan-400 pl-3">
+        {/* PPE Compliance Concentric Circles Chart (Span 4) */}
+        <div className="col-span-12 lg:col-span-4 glass-panel p-5 rounded-xl border border-[#3c494c]/30 flex flex-col justify-between min-h-[380px]">
+          <div className="flex items-center justify-between mb-2 border-l-4 border-cyan-400 pl-3">
             <h3 className="text-sm font-bold text-[#e0e3e5] font-sans">PPE Compliance</h3>
+            <span className="text-[10px] font-mono text-slate-400">ACTUAL RATE</span>
           </div>
 
           {/* Concentric Progress Graphic */}
           <div className="relative w-44 h-44 mx-auto my-2 flex items-center justify-center">
-            {/* Outer ring (Hardhats - 92%) */}
+            {/* Outer ring (Hardhats) */}
             <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
               <circle cx="50" cy="50" fill="none" r="44" stroke="rgba(133, 147, 151, 0.15)" strokeWidth="6"></circle>
               <circle
@@ -157,13 +215,14 @@ export default function SafetyDashboardPage({ selectedProject }) {
                 r="44"
                 stroke="#68f5b8"
                 strokeDasharray="276"
-                strokeDashoffset="22"
+                strokeDashoffset={outerOffset}
                 strokeWidth="6"
                 strokeLinecap="round"
+                className="transition-all duration-1000 ease-out"
               ></circle>
             </svg>
 
-            {/* Middle ring (Vests - 85%) */}
+            {/* Middle ring (Vests) */}
             <svg className="absolute inset-3 w-[calc(100%-24px)] h-[calc(100%-24px)] transform -rotate-90" viewBox="0 0 100 100">
               <circle cx="50" cy="50" fill="none" r="40" stroke="rgba(133, 147, 151, 0.15)" strokeWidth="6"></circle>
               <circle
@@ -173,32 +232,31 @@ export default function SafetyDashboardPage({ selectedProject }) {
                 r="40"
                 stroke="#fd8b00"
                 strokeDasharray="251"
-                strokeDashoffset="37"
+                strokeDashoffset={middleOffset}
                 strokeWidth="6"
                 strokeLinecap="round"
+                className="transition-all duration-1000 ease-out"
               ></circle>
             </svg>
 
             {/* Center score */}
             <div className="text-center z-10">
-              <span className="text-3xl font-extrabold font-mono text-[#e0e3e5] block leading-none">78%</span>
-              <span className="text-[10px] font-mono text-[#859397]">AVG</span>
+              <span className={`text-3xl font-extrabold font-mono block leading-none ${hasData ? 'text-[#e0e3e5]' : 'text-slate-500'}`}>
+                {hasData && overallRate !== null && overallRate !== undefined ? `${overallRate}%` : 'N/A'}
+              </span>
+              <span className="text-[10px] font-mono text-[#859397]">AVG RATE</span>
             </div>
           </div>
 
           {/* Breakdown Rows */}
           <div className="space-y-2 font-mono text-xs pt-2 border-t border-[#3c494c]/30">
             <div className="flex justify-between items-center text-[#bbc9cd]">
-              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 bg-[#68f5b8] rounded-full"></span> Hardhats</span>
-              <span className="font-bold text-[#e0e3e5]">92%</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 bg-[#68f5b8] rounded-full"></span> Hardhat Compliance</span>
+              <span className="font-bold text-[#e0e3e5]">{hasData ? `${helmetRate}%` : 'N/A'}</span>
             </div>
             <div className="flex justify-between items-center text-[#bbc9cd]">
-              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 bg-[#fd8b00] rounded-full"></span> Vests</span>
-              <span className="font-bold text-[#e0e3e5]">85%</span>
-            </div>
-            <div className="flex justify-between items-center text-[#bbc9cd]">
-              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 bg-red-500 rounded-full"></span> Harnesses</span>
-              <span className="font-bold text-red-400">58%</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 bg-[#fd8b00] rounded-full"></span> Safety Vest Compliance</span>
+              <span className="font-bold text-[#e0e3e5]">{hasData ? `${vestRate}%` : 'N/A'}</span>
             </div>
           </div>
         </div>
@@ -210,61 +268,79 @@ export default function SafetyDashboardPage({ selectedProject }) {
         <div className="flex items-center justify-between border-b border-[#3c494c]/30 pb-3">
           <div className="flex items-center gap-2 border-l-4 border-cyan-400 pl-3">
             <h3 className="text-sm font-bold text-[#e0e3e5] font-sans">Recent Violations Feed</h3>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 text-cyan-300 border border-slate-700">
+              {violations.length} RECORDS
+            </span>
           </div>
-          <span className="text-[10px] font-mono text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/30 uppercase cursor-pointer">
-            VIEW ALL
+          <span className="text-[10px] font-mono text-slate-400">
+            PROJECT: {selectedProjectId}
           </span>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs font-mono">
-            <thead>
-              <tr className="border-b border-[#3c494c]/30 text-[#859397] text-[11px] uppercase tracking-wider">
-                <th className="py-2.5 px-3">EVIDENCE</th>
-                <th className="py-2.5 px-3">TIMESTAMP</th>
-                <th className="py-2.5 px-3">ZONE</th>
-                <th className="py-2.5 px-3">TYPE</th>
-                <th className="py-2.5 px-3">SEVERITY</th>
-                <th className="py-2.5 px-3 text-right">ACTION</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#3c494c]/20">
-              {(violations.length > 0 ? violations : [
-                { violation_id: '1', zone_name: 'Z-12 (SCAFFOLD)', violation_type: 'Missing Harness', risk_category: 'CRITICAL', created_at: new Date().toISOString() },
-                { violation_id: '2', zone_name: 'Z-04 (LOADING)', violation_type: 'No Hi-Vis Vest', risk_category: 'MODERATE', created_at: new Date().toISOString() }
-              ]).map((v) => (
-                <tr key={v.violation_id} className="hover:bg-[#1d2022]/60 transition-colors">
-                  <td className="py-3 px-3">
-                    <div className="w-14 h-10 rounded bg-[#101415] border border-[#3c494c]/40 overflow-hidden">
-                      <img
-                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuCa1n-e1YtHop7_7rQ_mkV7lOzayANAX2eTcXnDP0Vv9aaKw_ZBSbwT6zSL4uIg9mmJWiYPJrh9pDLu2PCvWemq3dTIkbeyZRRA8L3OHcpoV-fifsSNifDM7Pa7n5yPh_DnBUSyM-nCp9QJ2UuOExeSZ60qn21DOMZuDOdQ89XOtNvHUrIYGdpx7vYkzMCgosmFc8cCztXswjEUhmDtMv2rZFnnwWOobZMPclFumj6mo5LNxLGYIQmx"
-                        alt="Evidence frame"
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.target.src = "https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=200&q=80";
-                        }}
-                      />
-                    </div>
-                  </td>
-                  <td className="py-3 px-3 text-[#bbc9cd]">14:02:45</td>
-                  <td className="py-3 px-3 text-[#e0e3e5] font-bold">{v.zone_name}</td>
-                  <td className="py-3 px-3 text-cyan-300">{v.violation_type}</td>
-                  <td className="py-3 px-3">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase inline-flex items-center gap-1 ${
-                      v.risk_category?.toLowerCase().includes('crit') ? 'bg-red-500/20 text-red-300 border border-red-500/40' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                    }`}>
-                      ★ {v.risk_category}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-right">
-                    <button className="text-cyan-400 hover:text-cyan-300 cursor-pointer p-1">
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  </td>
+          {violations.length > 0 ? (
+            <table className="w-full text-left border-collapse text-xs font-mono">
+              <thead>
+                <tr className="border-b border-[#3c494c]/30 text-[#859397] text-[11px] uppercase tracking-wider">
+                  <th className="py-2.5 px-3">EVIDENCE</th>
+                  <th className="py-2.5 px-3">TIMESTAMP</th>
+                  <th className="py-2.5 px-3">ZONE</th>
+                  <th className="py-2.5 px-3">VIOLATION TYPE</th>
+                  <th className="py-2.5 px-3">SEVERITY</th>
+                  <th className="py-2.5 px-3">STATUS</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-[#3c494c]/20">
+                {violations.map((v) => (
+                  <tr key={v.violation_id} className="hover:bg-[#1d2022]/60 transition-colors">
+                    <td className="py-3 px-3">
+                      <div className="w-14 h-10 rounded bg-[#101415] border border-[#3c494c]/40 overflow-hidden flex items-center justify-center">
+                        {v.annotated_image_path || v.original_image_path ? (
+                          <img
+                            src={v.annotated_image_path || v.original_image_path}
+                            alt="Evidence frame"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <span className="text-[9px] text-slate-500">NO IMG</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-3 px-3 text-[#bbc9cd]">
+                      {v.detected_at ? new Date(v.detected_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Recent'}
+                    </td>
+                    <td className="py-3 px-3 text-[#e0e3e5] font-bold">{v.zone_name}</td>
+                    <td className="py-3 px-3 text-cyan-300">{v.violation_type?.replace(/_/g, ' ')}</td>
+                    <td className="py-3 px-3">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase inline-flex items-center gap-1 ${
+                        v.risk_category?.toLowerCase().includes('crit') ? 'bg-red-500/20 text-red-300 border border-red-500/40' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                      }`}>
+                        {v.risk_category}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                        v.status === 'RESOLVED' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' :
+                        v.status === 'ACKNOWLEDGED' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' :
+                        'bg-red-500/20 text-red-300 border border-red-500/40'
+                      }`}>
+                        {v.status || 'OPEN'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="p-8 text-center border border-dashed border-[#3c494c]/30 rounded-lg">
+              <CheckCircle2 className="h-6 w-6 text-emerald-400 mx-auto mb-2" />
+              <p className="text-xs font-mono text-slate-300">No violation records logged for {selectedProject?.name || selectedProjectId}.</p>
+              <p className="text-[11px] font-mono text-slate-500 mt-1">All monitored PPE rules and zone observations are clean.</p>
+            </div>
+          )}
         </div>
       </div>
 

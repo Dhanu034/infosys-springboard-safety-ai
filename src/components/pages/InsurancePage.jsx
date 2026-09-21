@@ -103,9 +103,12 @@ export default function InsurancePage({ selectedProject }) {
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/10 text-amber-300 border border-amber-400/30">
               INTERNAL DECISION SUPPORT
             </span>
+            <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-[#1d2022] text-[#859397] border border-[#3c494c]/40">
+              [DATABASE]
+            </span>
           </div>
           <p className="text-xs font-mono text-[#859397] mt-1 tracking-wide">
-            ACTUARIAL EXPOSURE INDEX & INCIDENT EVIDENCE CHECKLIST // {selectedProject?.name || "PROJECT ALPHA"}
+            ACTUARIAL EXPOSURE INDEX & INCIDENT EVIDENCE CHECKLIST // {selectedProject?.name || "PROJECT ALPHA"} ({projectId})
           </p>
         </div>
 
@@ -143,10 +146,10 @@ export default function InsurancePage({ selectedProject }) {
           <p className="text-xs font-semibold text-[#bbc9cd]">Exposure Risk Score</p>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-extrabold font-mono text-[#e0e3e5]">
-              {exposure?.exposure_score ?? 34.3}
+              {exposure?.exposure_score != null ? exposure.exposure_score : (claims.length > 0 ? 34.3 : "N/A")}
             </span>
             <span className="text-xs font-mono text-amber-300 font-bold">
-              / 100 ({exposure?.exposure_tier ?? "LOW"})
+              {exposure?.exposure_score != null ? `/ 100 (${exposure?.exposure_tier ?? "LOW"})` : (claims.length > 0 ? "/ 100 (LOW)" : "NO DATA")}
             </span>
           </div>
         </div>
@@ -175,7 +178,7 @@ export default function InsurancePage({ selectedProject }) {
           <p className="text-xs font-semibold text-[#bbc9cd]">Evidence Completeness</p>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-extrabold font-mono text-emerald-400">
-              {exposure?.evidence_completeness_rate ?? 100}%
+              {exposure?.evidence_completeness_rate != null ? `${exposure.evidence_completeness_rate}%` : (claims.length > 0 ? "100%" : "N/A")}
             </span>
             <span className="text-[11px] font-mono text-[#859397]">Ready for Review</span>
           </div>
@@ -190,7 +193,7 @@ export default function InsurancePage({ selectedProject }) {
           <p className="text-xs font-semibold text-[#bbc9cd]">Illustrative Estimate</p>
           <div>
             <p className="text-sm font-extrabold font-mono text-[#e0e3e5] truncate">
-              {exposure?.illustrative_liability_range?.includes('$') ? exposure.illustrative_liability_range.split('—')[0] : "$15,000 - $35,000"}
+              {exposure?.illustrative_liability_range || (claims.length > 0 ? "$15,000 - $35,000" : "N/A")}
             </p>
             <p className="text-[9px] font-mono text-[#859397] mt-0.5 italic">
               Illustrative internal estimate — not an insurance quotation or claim value.

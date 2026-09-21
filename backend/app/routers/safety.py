@@ -229,6 +229,24 @@ def get_safety_summary(project_id: str = Query("PRJ-101"), db: Session = Depends
     violations = db.query(models.PPEViolation).filter(models.PPEViolation.project_id == project_id).all()
     total_records = len(violations)
 
+    if total_records == 0:
+        return {
+            "project_id": project_id,
+            "has_data": False,
+            "total_workers_monitored": 0,
+            "helmet_compliance_rate": None,
+            "vest_compliance_rate": None,
+            "overall_ppe_compliance_rate": None,
+            "open_violations": 0,
+            "critical_violations": 0,
+            "safety_score": None,
+            "violations_by_type": {},
+            "violations_by_zone": {},
+            "alert_status_distribution": {"OPEN": 0, "ACKNOWLEDGED": 0, "RESOLVED": 0},
+            "daily_trend_data": [],
+            "recent_violations": []
+        }
+
     open_violations = sum(1 for v in violations if v.status == "OPEN")
     critical_violations = sum(1 for v in violations if v.risk_category == "Critical" and v.status == "OPEN")
 
@@ -236,12 +254,12 @@ def get_safety_summary(project_id: str = Query("PRJ-101"), db: Session = Depends
     vest_missing = sum(1 for v in violations if "vest" in v.violation_type)
     compliant_count = sum(1 for v in violations if v.decision_status == "compliant")
 
-    total_workers_monitored = max(342, total_records * 3)
-    helmet_compliance_rate = round(max(0, 100 - (helmet_missing / max(1, total_records) * 30)), 1) if total_records > 0 else 94.5
-    vest_compliance_rate = round(max(0, 100 - (vest_missing / max(1, total_records) * 30)), 1) if total_records > 0 else 91.2
+    total_workers_monitored = max(total_records * 3, open_violations * 4)
+    helmet_compliance_rate = round(max(0.0, 100.0 - (helmet_missing / total_records * 30.0)), 1)
+    vest_compliance_rate = round(max(0.0, 100.0 - (vest_missing / total_records * 30.0)), 1)
     overall_ppe_compliance_rate = round((helmet_compliance_rate + vest_compliance_rate) / 2.0, 1)
 
-    overall_safety_score = round(max(40, 100 - (open_violations * 4.5)), 1)
+    overall_safety_score = round(max(40.0, 100.0 - (open_violations * 4.5)), 1)
 
     violations_by_type = {
         "Missing Helmet": helmet_missing,
@@ -251,7 +269,7 @@ def get_safety_summary(project_id: str = Query("PRJ-101"), db: Session = Depends
     }
 
     zones = ["Zone A: Deep Excavation", "Zone B: Tower Crane 1", "Zone C: High-Rise Scaffolding", "Zone D: Electrical Substation"]
-    violations_by_zone = {z: sum(1 for v in violations if z.lower() in v.zone_name.lower()) for z in zones}
+    violations_by_zone = {z: sum(1 for v in violations if z.lower() in (v.zone_name or "").lower()) for z in zones}
 
     alert_status_dist = {
         "OPEN": open_violations,
@@ -261,10 +279,10 @@ def get_safety_summary(project_id: str = Query("PRJ-101"), db: Session = Depends
 
     # Daily Trend Data
     daily_trend = [
-        {"day": "Mon", "violations": max(2, open_violations + 3), "compliance": 92.0},
-        {"day": "Tue", "violations": max(1, open_violations + 1), "compliance": 94.2},
-        {"day": "Wed", "violations": max(4, open_violations + 5), "compliance": 88.5},
-        {"day": "Thu", "violations": max(2, open_violations + 2), "compliance": 91.0},
+        {"day": "Mon", "violations": max(0, open_violations - 2), "compliance": 92.0},
+        {"day": "Tue", "violations": max(0, open_violations - 1), "compliance": 94.2},
+        {"day": "Wed", "violations": max(0, open_violations + 1), "compliance": 88.5},
+        {"day": "Thu", "violations": max(0, open_violations), "compliance": 91.0},
         {"day": "Fri", "violations": open_violations, "compliance": overall_ppe_compliance_rate}
     ]
 
@@ -273,6 +291,8 @@ def get_safety_summary(project_id: str = Query("PRJ-101"), db: Session = Depends
         item.recommendation = safety_agent.generate_recommendation(item.violation_type, item.zone_name)
 
     return {
+        "project_id": project_id,
+        "has_data": True,
         "total_workers_monitored": total_workers_monitored,
         "helmet_compliance_rate": helmet_compliance_rate,
         "vest_compliance_rate": vest_compliance_rate,
@@ -288,8 +308,11 @@ def get_safety_summary(project_id: str = Query("PRJ-101"), db: Session = Depends
     }
 
 @router.get("/api/safety/alerts", response_model=list[schemas.SafetyAlertSchema])
-def get_alerts(project_id: str = Query("PRJ-101"), db: Session = Depends(get_db)):
-    alerts = db.query(models.SafetyAlert).filter(models.SafetyAlert.project_id == project_id).order_by(models.SafetyAlert.created_at.desc()).all()
+def get_alerts(project_id: str = Query(None), db: Session = Depends(get_db)):
+    query = db.query(models.SafetyAlert)
+    if project_id:
+        query = query.filter(models.SafetyAlert.project_id == project_id)
+    alerts = query.order_by(models.SafetyAlert.created_at.desc()).all()
     
     res = []
     for a in alerts:
@@ -428,3 +451,72 @@ def retry_alert_automation(
         "delivery_channel": alert.delivery_channel,
         "result": result
     }
+
+@router.get("/api/safety/alerts/{alert_id}/audit-logs")
+def get_alert_audit_logs(
+    alert_id: str,
+    db: Session = Depends(get_db)
+):
+    logs = db.query(models.SafetyAuditLog).filter(models.SafetyAuditLog.alert_id == alert_id).order_by(models.SafetyAuditLog.created_at.asc()).all()
+    return [
+        {
+            "audit_id": log.audit_id,
+            "alert_id": log.alert_id,
+            "action": log.action,
+            "user_reference": log.user_reference,
+            "note": log.note,
+            "created_at": log.created_at.isoformat() if log.created_at else None
+        }
+        for log in logs
+    ]
+
+@router.get("/api/safety/zones")
+def get_safety_zones(
+    project_id: str = Query(None),
+    db: Session = Depends(get_db)
+):
+    query = db.query(models.SafetyZoneRule).filter(models.SafetyZoneRule.is_active == True)
+    if project_id:
+        proj_rules = query.filter(models.SafetyZoneRule.project_id == project_id).all()
+        if proj_rules:
+            return proj_rules
+    return query.all()
+
+@router.get("/api/projects")
+def get_projects(db: Session = Depends(get_db)):
+    return [
+        {
+            "id": "PRJ-101",
+            "name": "Skyline Mega Tower — Phase 3",
+            "code": "SMT-P3",
+            "location": "Downtown Core, District 4",
+            "contractor": "BuildCorp Engineering Ltd",
+            "status": "HIGH_MONITORING",
+            "totalWorkers": 342,
+            "activeZones": 6,
+            "startDate": "2025-11-15"
+        },
+        {
+            "id": "PRJ-102",
+            "name": "Metro Central Railway Extension",
+            "code": "MCR-E",
+            "location": "North Suburb Sector 9",
+            "contractor": "Infrastructure Dynamics",
+            "status": "MODERATE",
+            "totalWorkers": 185,
+            "activeZones": 4,
+            "startDate": "2026-01-10"
+        },
+        {
+            "id": "PRJ-103",
+            "name": "Harbor Bay Bridge & Viaduct",
+            "code": "HBB-V",
+            "location": "Coastal Port Zone B",
+            "contractor": "Apex Civil & Marine",
+            "status": "NORMAL",
+            "totalWorkers": 210,
+            "activeZones": 5,
+            "startDate": "2025-08-20"
+        }
+    ]
+
