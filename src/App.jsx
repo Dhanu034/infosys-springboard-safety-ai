@@ -22,6 +22,7 @@ import AgentReasoningDrawer from './components/AgentReasoningDrawer';
 
 import { getProjectZones, getProjectHazards } from './data/mockSiteData';
 import { siteRiskAgent } from './agents/SiteRiskAgent';
+import { sanitizeActiveTab } from './config/demoConfig';
 import { Sparkles } from 'lucide-react';
 
 function AppContent() {
@@ -32,7 +33,9 @@ function AppContent() {
   const [toastMessage, setToastMessage] = useState(null);
 
   // Active Tab State (Exact Stitch Navigation Keys)
-  const [activeTab, setActiveTab] = useState('COMMAND_CENTER');
+  const [rawActiveTab, setRawActiveTab] = useState('COMMAND_CENTER');
+  const activeTab = sanitizeActiveTab(rawActiveTab);
+  const setActiveTab = (tabId) => setRawActiveTab(tabId);
 
   // Initialize and evaluate hazards with Site Risk Agent on project change
   useEffect(() => {
