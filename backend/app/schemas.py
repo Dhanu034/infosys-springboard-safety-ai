@@ -138,3 +138,66 @@ class SafetySummaryResponse(BaseModel):
     alert_status_distribution: dict = {}
     daily_trend_data: List[dict] = []
     recent_violations: List[PPEViolationSchema] = []
+
+# =====================================================================
+# Post-M4 Enhancement: Offline Video Safety Analysis Schemas
+# =====================================================================
+
+class VideoMetadataSchema(BaseModel):
+    fps: float
+    duration_seconds: float
+    total_frames: int
+    sampled_frames: int
+    resolution: Optional[str] = None
+    file_size_mb: Optional[float] = None
+
+class VideoSummarySchema(BaseModel):
+    persons_detected: int = 0
+    helmet_violation_incidents: int = 0
+    vest_violation_incidents: int = 0
+    highest_risk_score: Optional[float] = None
+    critical_incidents: int = 0
+    needs_human_review: int = 0
+
+class GroupedIncidentSchema(BaseModel):
+    incident_id: str
+    violation_type: str
+    start_timestamp_seconds: float
+    end_timestamp_seconds: float
+    start_frame: Optional[int] = None
+    end_frame: Optional[int] = None
+    occurrences_count: int = 1
+    peak_risk_score: float
+    max_confidence: float
+    status: str = "OPEN"
+    risk_category: str = "Medium"
+    evidence_frame_reference: Optional[str] = None
+    needs_human_review: bool = False
+    recommendation: Optional[str] = None
+    required_ppe: Optional[str] = None
+    missing_ppe: Optional[str] = None
+    detected_ppe: Optional[str] = None
+    bounding_box: Optional[List[int]] = None
+
+class KeyframeEvidenceSchema(BaseModel):
+    frame_number: int
+    timestamp_seconds: float
+    image_url: str
+    persons_detected: int
+    violations_count: int
+    decision_status: str
+
+class VideoSafetyAnalysisResponse(BaseModel):
+    analysis_id: str
+    project_id: str
+    zone: str
+    status: str = "COMPLETED"
+    mode: str = "OFFLINE_VIDEO_ANALYSIS"
+    metadata: VideoMetadataSchema
+    summary: VideoSummarySchema
+    grouped_incidents: List[GroupedIncidentSchema] = []
+    annotated_video_url: Optional[str] = None
+    keyframe_evidence: List[KeyframeEvidenceSchema] = []
+    message: str
+    disclaimer: str = "Offline video analysis is advisory decision support. It is not live CCTV monitoring and requires supervisor review."
+

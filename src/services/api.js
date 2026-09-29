@@ -54,6 +54,44 @@ export async function analyzeSafetyImage(file, projectId = "PRJ-101", zoneName =
   return data;
 }
 
+export async function analyzeSafetyVideo(file, projectId = "PRJ-101", zoneName = "General Work Zone", samplingMode = "1fps") {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("project_id", projectId);
+  formData.append("zone_name", zoneName);
+  formData.append("sampling_mode", samplingMode);
+
+  const res = await fetch(`${API_BASE_URL}/api/safety/analyze-video`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.detail || `Video analysis failed with HTTP ${res.status}`);
+  }
+
+  const data = await res.json();
+  if (data.annotated_video_url && data.annotated_video_url.startsWith('/')) {
+    data.annotated_video_url = `${API_BASE_URL}${data.annotated_video_url}`;
+  }
+  if (data.keyframe_evidence) {
+    data.keyframe_evidence = data.keyframe_evidence.map(kf => ({
+      ...kf,
+      image_url: kf.image_url?.startsWith('/') ? `${API_BASE_URL}${kf.image_url}` : kf.image_url
+    }));
+  }
+  if (data.grouped_incidents) {
+    data.grouped_incidents = data.grouped_incidents.map(inc => ({
+      ...inc,
+      evidence_frame_reference: inc.evidence_frame_reference?.startsWith('/') ? `${API_BASE_URL}${inc.evidence_frame_reference}` : inc.evidence_frame_reference
+    }));
+  }
+
+  return data;
+}
+
+
 export async function fetchViolations(filters = {}) {
   const params = new URLSearchParams();
   if (filters.projectId) params.append("project_id", filters.projectId);
@@ -364,5 +402,16 @@ export async function fetchReportAuditLogs(projectId = null) {
   if (!res.ok) throw new Error(`Failed to fetch report audit logs (HTTP ${res.status})`);
   return await res.json();
 }
+
+export async function fetchRiskDecisionTimeline(projectId = "PRJ-101", fromDate = null, toDate = null, limit = 50) {
+  const params = new URLSearchParams({ project_id: projectId, limit });
+  if (fromDate) params.append("from_date", fromDate);
+  if (toDate) params.append("to_date", toDate);
+
+  const res = await fetch(`${API_BASE_URL}/api/reports/timeline?${params.toString()}`);
+  if (!res.ok) throw new Error(`Failed to fetch risk decision timeline (HTTP ${res.status})`);
+  return await res.json();
+}
+
 
 

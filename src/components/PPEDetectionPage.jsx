@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Upload, ShieldCheck, AlertTriangle, Cpu, Sparkles, CheckCircle2, XCircle, Info, Clock, RefreshCw, HardHat, FileText, Check, AlertOctagon } from 'lucide-react';
+import { Upload, ShieldCheck, AlertTriangle, Cpu, Sparkles, CheckCircle2, XCircle, Info, Clock, RefreshCw, HardHat, FileText, Check, AlertOctagon, Film, Image as ImageIcon } from 'lucide-react';
 import { analyzeSafetyImage } from '../services/api';
+import VideoSafetyAnalysisPanel from './safety/VideoSafetyAnalysisPanel';
 import ChartPanel from './ui/ChartPanel';
 import MetricCard from './ui/MetricCard';
 import RiskBadge from './ui/RiskBadge';
@@ -12,8 +13,10 @@ import LoadingState from './ui/LoadingState';
 /**
  * PPEDetectionPage Component (Phase 3 Redesign)
  * Milestone 2 Vision Inference workspace styled with Industrial Precision Glassmorphism.
+ * Extended with Offline Video Safety Analysis Tab (Post-M4 Enhancement).
  */
-export default function PPEDetectionPage({ selectedProject }) {
+export default function PPEDetectionPage({ selectedProject, onNavigateTab }) {
+  const [activeMode, setActiveMode] = useState('IMAGE'); // 'IMAGE' | 'VIDEO'
   const [zoneName, setZoneName] = useState('General Work Zone');
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -96,23 +99,62 @@ export default function PPEDetectionPage({ selectedProject }) {
           </div>
         </div>
 
-        {/* Zone Selector */}
-        <div className="flex items-center gap-2 bg-[#0b0f10] border border-slate-800 p-2 rounded-xl">
-          <span className="text-xs font-mono font-semibold text-slate-400 pl-2">Active Zone:</span>
-          <select
-            value={zoneName}
-            onChange={(e) => setZoneName(e.target.value)}
-            className="bg-slate-900 text-xs font-mono font-bold text-cyan-300 px-3 py-1.5 rounded-lg border border-slate-700 focus:outline-none focus:border-cyan-500/50 cursor-pointer"
-          >
-            {zones.map((z) => (
-              <option key={z.name} value={z.name} className="bg-slate-900 text-slate-200">
-                {z.icon} {z.name} ({z.mult}x Risk)
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Zone Selector (Image mode) */}
+        {activeMode === 'IMAGE' && (
+          <div className="flex items-center gap-2 bg-[#0b0f10] border border-slate-800 p-2 rounded-xl">
+            <span className="text-xs font-mono font-semibold text-slate-400 pl-2">Active Zone:</span>
+            <select
+              value={zoneName}
+              onChange={(e) => setZoneName(e.target.value)}
+              className="bg-slate-900 text-xs font-mono font-bold text-cyan-300 px-3 py-1.5 rounded-lg border border-slate-700 focus:outline-none focus:border-cyan-500/50 cursor-pointer"
+            >
+              {zones.map((z) => (
+                <option key={z.name} value={z.name} className="bg-slate-900 text-slate-200">
+                  {z.icon} {z.name} ({z.mult}x Risk)
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
+      {/* Mode Switcher Tabs */}
+      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-[#0b0f10] border border-slate-800 w-full sm:w-auto">
+        <button
+          onClick={() => setActiveMode('IMAGE')}
+          className={`flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs font-mono font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+            activeMode === 'IMAGE'
+              ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm glow-cyan'
+              : 'text-slate-400 hover:text-slate-200 border border-transparent'
+          }`}
+        >
+          <ImageIcon className="h-4 w-4" />
+          <span>Image Analysis</span>
+        </button>
+
+        <button
+          onClick={() => setActiveMode('VIDEO')}
+          className={`flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs font-mono font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+            activeMode === 'VIDEO'
+              ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm glow-cyan'
+              : 'text-slate-400 hover:text-slate-200 border border-transparent'
+          }`}
+        >
+          <Film className="h-4 w-4" />
+          <span>Video Safety Analysis</span>
+          <span className="px-1.5 py-0.2 rounded text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/40">
+            Offline Footage
+          </span>
+        </button>
+      </div>
+
+      {activeMode === 'VIDEO' ? (
+        <VideoSafetyAnalysisPanel
+          selectedProject={selectedProject}
+          onNavigateTab={onNavigateTab}
+        />
+      ) : (
+        <>
       {/* Zone Requirement Rules Card */}
       <div className="glass-panel p-4 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
         <div className="flex items-center gap-3 flex-wrap">
@@ -406,6 +448,8 @@ export default function PPEDetectionPage({ selectedProject }) {
         </div>
 
       </div>
+        </>
+      )}
 
     </div>
   );

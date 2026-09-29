@@ -1,13 +1,10 @@
 /**
- * BuildSure AI — Hackathon Presentation Configuration
- * Controls presentation feature flags, clean navigation sets, and safe fallbacks.
+ * BuildSure AI — Unified Application Configuration
+ * Single source of truth for College Presentation, Infosys Review, Hackathon, and Continuous Development.
  */
 
-// Reads VITE_HACKATHON_DEMO_MODE from environment; defaults to true if set to 'true' or not explicitly 'false'
 export const isHackathonDemoMode = () => {
-  const envFlag = import.meta.env.VITE_HACKATHON_DEMO_MODE;
-  if (envFlag === 'false') return false;
-  return true; // Default enabled for hackathon presentation mode
+  return false;
 };
 
 export const ALL_NAV_ITEMS = [
@@ -19,38 +16,27 @@ export const ALL_NAV_ITEMS = [
   { id: 'AGENT_NETWORK', label: 'Agent Network', iconName: 'Bot', milestone: 'Architecture' },
   { id: 'COMPLIANCE', label: 'Compliance', iconName: 'ShieldCheck', milestone: 'M3' },
   { id: 'INSURANCE', label: 'Insurance', iconName: 'ShieldAlert', milestone: 'M3' },
-  { id: 'REPORTS', label: 'Reports', iconName: 'FileText', milestone: 'M4' },
+  { id: 'REPORTS', label: 'Executive Reports', iconName: 'FileText', milestone: 'M4' },
   { id: 'SETTINGS', label: 'Settings', iconName: 'Settings', milestone: 'Config' },
 ];
 
-export const DEMO_ALLOWED_TAB_IDS = [
-  'COMMAND_CENTER',
-  'SITE_RISK',
-  'PPE_DETECTION',
-  'SAFETY_DASHBOARD',
-  'SAFETY_ALERTS',
-  'COMPLIANCE',
-  'INSURANCE'
-];
+export const DEMO_ALLOWED_TAB_IDS = ALL_NAV_ITEMS.map(item => item.id);
 
 /**
- * Returns active navigation items based on current demo mode flag.
+ * Returns active navigation items for the unified application.
  */
 export const getActiveNavItems = () => {
-  if (isHackathonDemoMode()) {
-    return ALL_NAV_ITEMS.filter(item => DEMO_ALLOWED_TAB_IDS.includes(item.id));
-  }
   return ALL_NAV_ITEMS;
 };
 
 /**
- * Validates active tab; if a tab is hidden in demo mode, returns fallback 'COMMAND_CENTER'
+ * Validates active tab; supports all registered navigation keys.
  */
 export const sanitizeActiveTab = (tabId) => {
-  if (isHackathonDemoMode()) {
-    if (!DEMO_ALLOWED_TAB_IDS.includes(tabId)) {
-      return 'COMMAND_CENTER';
-    }
+  const validIds = ALL_NAV_ITEMS.map(item => item.id);
+  if (!validIds.includes(tabId)) {
+    return 'COMMAND_CENTER';
   }
   return tabId;
 };
+

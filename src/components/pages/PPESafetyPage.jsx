@@ -1,13 +1,16 @@
 import React, { useState, useRef } from 'react';
-import { Upload, ShieldCheck, AlertTriangle, Cpu, Sparkles, CheckCircle2, XCircle, Info, Clock, RefreshCw, HardHat, FileText, Check, AlertOctagon, Eye, EyeOff, Layers, Crosshair } from 'lucide-react';
+import { Upload, ShieldCheck, AlertTriangle, Cpu, Sparkles, CheckCircle2, XCircle, Info, Clock, RefreshCw, HardHat, FileText, Check, AlertOctagon, Eye, EyeOff, Layers, Crosshair, Film, Image as ImageIcon } from 'lucide-react';
 import { analyzeSafetyImage } from '../../services/api';
+import VideoSafetyAnalysisPanel from '../safety/VideoSafetyAnalysisPanel';
 
 /**
  * PPESafetyPage Component
  * Calibrated YOLO v8x Vision Overlay & Synchronized PPE Telemetry Dashboard.
+ * Supports Image Analysis & Offline Video Safety Analysis tabs.
  */
-export default function PPESafetyPage({ selectedProject }) {
+export default function PPESafetyPage({ selectedProject, onNavigateTab }) {
   const projectId = selectedProject?.id || "PRJ-101";
+  const [activeMode, setActiveMode] = useState('IMAGE'); // 'IMAGE' | 'VIDEO'
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -190,39 +193,78 @@ export default function PPESafetyPage({ selectedProject }) {
           </p>
         </div>
 
-        {/* Layer Switcher */}
-        <div className="flex items-center gap-1 bg-[#0b0f10] border border-[#3c494c]/40 p-1 rounded-xl">
-          <button
-            onClick={() => setActiveLayer('INFERENCE')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-              activeLayer === 'INFERENCE'
-                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                : 'text-[#859397] hover:text-[#e0e3e5]'
-            }`}
-          >
-            <Layers className="h-3.5 w-3.5" />
-            <span>INFERENCE LAYER</span>
-          </button>
-          <button
-            onClick={() => setActiveLayer('RAW')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-              activeLayer === 'RAW'
-                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                : 'text-[#859397] hover:text-[#e0e3e5]'
-            }`}
-          >
-            <Eye className="h-3.5 w-3.5" />
-            <span>RAW FEED</span>
-          </button>
-        </div>
+        {/* Layer Switcher (Visible in Image mode) */}
+        {activeMode === 'IMAGE' && (
+          <div className="flex items-center gap-1 bg-[#0b0f10] border border-[#3c494c]/40 p-1 rounded-xl">
+            <button
+              onClick={() => setActiveLayer('INFERENCE')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeLayer === 'INFERENCE'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
+                  : 'text-[#859397] hover:text-[#e0e3e5]'
+              }`}
+            >
+              <Layers className="h-3.5 w-3.5" />
+              <span>INFERENCE LAYER</span>
+            </button>
+            <button
+              onClick={() => setActiveLayer('RAW')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeLayer === 'RAW'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
+                  : 'text-[#859397] hover:text-[#e0e3e5]'
+              }`}
+            >
+              <Eye className="h-3.5 w-3.5" />
+              <span>RAW FEED</span>
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Top Section: Upload Dropzone (Span 8) & AI Confidence Telemetry (Span 4) */}
-      <div className="grid grid-cols-12 gap-6">
-        
-        {/* Upload Dropzone */}
-        <div className="col-span-12 lg:col-span-8 flex flex-col justify-between">
-          <div
+      {/* Mode Switcher Tabs */}
+      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-[#0b0f10] border border-slate-800 w-full sm:w-auto">
+        <button
+          onClick={() => setActiveMode('IMAGE')}
+          className={`flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs font-mono font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+            activeMode === 'IMAGE'
+              ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm glow-cyan'
+              : 'text-slate-400 hover:text-slate-200 border border-transparent'
+          }`}
+        >
+          <ImageIcon className="h-4 w-4" />
+          <span>Image Analysis</span>
+        </button>
+
+        <button
+          onClick={() => setActiveMode('VIDEO')}
+          className={`flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs font-mono font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+            activeMode === 'VIDEO'
+              ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm glow-cyan'
+              : 'text-slate-400 hover:text-slate-200 border border-transparent'
+          }`}
+        >
+          <Film className="h-4 w-4" />
+          <span>Video Safety Analysis</span>
+          <span className="px-1.5 py-0.2 rounded text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/40">
+            Offline Footage
+          </span>
+        </button>
+      </div>
+
+      {activeMode === 'VIDEO' ? (
+        <VideoSafetyAnalysisPanel
+          selectedProject={selectedProject}
+          onNavigateTab={onNavigateTab}
+        />
+      ) : (
+        <>
+          {/* Top Section: Upload Dropzone (Span 8) & AI Confidence Telemetry (Span 4) */}
+          <div className="grid grid-cols-12 gap-6">
+            
+            {/* Upload Dropzone */}
+            <div className="col-span-12 lg:col-span-8 flex flex-col justify-between">
+              <div
             onDragEnter={handleDragEnter}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -579,7 +621,10 @@ export default function PPESafetyPage({ selectedProject }) {
           ⚠️ SYSTEM DISCLAIMER: AI detection is for decision support only. Visual anomalies may occur. Final compliance verification remains the responsibility of the site safety officer.
         </p>
       </div>
+        </>
+      )}
 
     </div>
   );
 }
+

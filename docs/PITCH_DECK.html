@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BuildSure AI — Pitch Deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          display: ['"Barlow Condensed"', '"Arial Narrow"', 'Impact', 'sans-serif'],
+          sans: ['"IBM Plex Sans"', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+          mono: ['"IBM Plex Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace']
+        },
+        colors: {
+          ink: '#101415',
+          signal: { cyan: '#06b6d4', emerald: '#10b981', amber: '#f59e0b', rose: '#f87171' }
+        }
+      }
+    }
+  };
+</script>
+<style>
+  :root {
+    --ink: #101415;
+    --text: #e7eef1;
+    --muted: #8ea2aa;
+    --cyan: #06b6d4;
+    --emerald: #10b981;
+    --amber: #f59e0b;
+    --rose: #f87171;
+    --line: rgba(255, 255, 255, .09);
+    color-scheme: dark;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *, *::before, *::after { box-sizing: inherit; }
+  html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); background: var(--ink); }
+  body {
+    height: 100%; margin: 0; overflow: hidden;
+    background: var(--ink); color: var(--text);
+    font-family: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- App frame ---------- */
+  #app { position: relative; height: 100%; display: flex; flex-direction: column; }
+  .hazard {
+    flex: none; height: 6px; opacity: .75;
+    background: repeating-linear-gradient(-45deg, var(--amber) 0 10px, #14191b 10px 20px);
+  }
+  .bg { position: absolute; inset: 0; pointer-events: none; z-index: 0;
+    background:
+      radial-gradient(60% 50% at 88% 8%, rgba(6,182,212,.17), transparent 70%),
+      radial-gradient(45% 45% at 4% 96%, rgba(16,185,129,.11), transparent 70%),
+      radial-gradient(35% 30% at 55% 100%, rgba(245,158,11,.06), transparent 70%);
+  }
+  .bg::after {
+    content: ""; position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+    background-size: 44px 44px;
+    -webkit-mask-image: radial-gradient(ellipse at 50% 40%, #000 25%, transparent 75%);
+            mask-image: radial-gradient(ellipse at 50% 40%, #000 25%, transparent 75%);
+  }
+  .stage { position: relative; z-index: 1; flex: 1; min-height: 0; }
+
+  /* ---------- Slides ---------- */
+  .slide {
+    position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden;
+    padding: clamp(16px, 2.6vw, 40px) clamp(16px, 4.5vw, 72px) clamp(10px, 1.6vw, 20px);
+    opacity: 0; visibility: hidden; transform: translateX(3%);
+    transition: opacity .5s ease, transform .5s ease, visibility 0s linear .5s;
+  }
+  .slide[data-state="active"] { opacity: 1; visibility: visible; transform: none; transition: opacity .5s ease, transform .5s ease, visibility 0s; }
+  .slide[data-state="past"] { transform: translateX(-3%); }
+  .slide-inner {
+    width: 100%; max-width: 1240px; min-height: 100%; margin-inline: auto;
+    display: flex; flex-direction: column; justify-content: center; gap: clamp(14px, 2vw, 26px);
+  }
+
+  /* ---------- Glass ---------- */
+  .glass {
+    background: linear-gradient(180deg, rgba(255,255,255,.065), rgba(255,255,255,.025));
+    border: 1px solid var(--line);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+            backdrop-filter: blur(18px) saturate(140%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 24px 60px -28px rgba(0,0,0,.7);
+  }
+  .glass-cyan { box-shadow: inset 0 1px 0 rgba(255,255,255,.09), 0 0 0 1px rgba(6,182,212,.18), 0 0 60px -12px rgba(6,182,212,.35); }
+  .accent-rose    { border-left: 3px solid var(--rose); }
+  .accent-cyan    { border-left: 3px solid var(--cyan); }
+  .accent-emerald { border-left: 3px solid var(--emerald); }
+
+  /* ---------- Type ---------- */
+  .display { font-family: 'Barlow Condensed', 'Arial Narrow', Impact, sans-serif; font-weight: 700; letter-spacing: -.005em; line-height: .95; }
+  .h-title { font-size: clamp(64px, 11.5vw, 176px); }
+  .h-slide { font-size: clamp(32px, 4.4vw, 60px); line-height: 1; }
+  .h-card  { font-size: clamp(22px, 2.1vw, 30px); line-height: 1.05; font-weight: 600; }
+  .grad-title {
+    background-image: linear-gradient(100deg, #a5f3fc 0%, #22d3ee 35%, #06b6d4 60%, #10b981 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 0 28px rgba(6,182,212,.35));
+  }
+  .txt    { font-size: clamp(13.5px, .55vw + 9.5px, 17px); line-height: 1.55; }
+  .txt-sm { font-size: clamp(12.5px, .4vw + 8.5px, 15px); line-height: 1.5; }
+  .muted { color: var(--muted); }
+  .mono { font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px; border-radius: 999px;
+    font-size: 12.5px; font-weight: 500; line-height: 1.2;
+    border: 1px solid var(--line); background: rgba(255,255,255,.05); color: #cfdde2;
+  }
+  .chip-cyan    { border-color: rgba(6,182,212,.45);  background: rgba(6,182,212,.12);  color: #a5f3fc; }
+  .chip-emerald { border-color: rgba(16,185,129,.45); background: rgba(16,185,129,.12); color: #a7f3d0; }
+  .chip-amber   { border-color: rgba(245,158,11,.45); background: rgba(245,158,11,.12); color: #fde68a; }
+  .dot-live { width: 8px; height: 8px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 10px 2px rgba(6,182,212,.8); }
+
+  .icon { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  .icon-box { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; flex: none; }
+
+  /* ---------- Table ---------- */
+  .cmp { width: 100%; min-width: 640px; border-collapse: separate; border-spacing: 0; }
+  .cmp th, .cmp td { text-align: left; padding: 9px 16px; vertical-align: top; }
+  .cmp thead th { font-weight: 600; color: var(--muted); font-size: 12.5px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.03); }
+  .cmp thead th:last-child { color: #a5f3fc; }
+  .cmp tbody tr + tr td { border-top: 1px solid rgba(255,255,255,.06); }
+  .cmp tbody td:first-child { font-weight: 600; white-space: nowrap; }
+  .cmp tbody td:nth-child(2) { color: var(--muted); }
+  .cmp tbody td:last-child { color: #d8f6fb; font-weight: 500; }
+
+  /* ---------- Detection scene ---------- */
+  .hud { font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; }
+  @keyframes scan { 0% { transform: translateY(0); } 50% { transform: translateY(398px); } 100% { transform: translateY(0); } }
+  .slide[data-state="active"] .scan { animation: scan 4.2s ease-in-out infinite; }
+
+  /* ---------- Roadmap ---------- */
+  .road { position: relative; }
+  .road::before { content: ""; position: absolute; left: 0; right: 0; top: 17px; height: 2px;
+    background: linear-gradient(90deg, var(--amber), var(--cyan) 55%, rgba(6,182,212,.15)); opacity: .55; }
+  @media (max-width: 767px) {
+    .road::before { left: 17px; right: auto; top: 0; bottom: 0; width: 2px; height: auto;
+      background: linear-gradient(180deg, var(--amber), var(--cyan) 55%, rgba(6,182,212,.15)); }
+  }
+  .node { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); position: relative; z-index: 1; flex: none; }
+
+  /* ---------- Dock ---------- */
+  .dock { position: relative; z-index: 2; flex: none; display: flex; justify-content: center; padding: 8px 12px 14px; }
+  .dock-in { display: flex; align-items: center; gap: clamp(6px, 1.6vw, 18px); padding: 6px; border-radius: 999px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 16px; border-radius: 999px;
+    font: 500 14px 'IBM Plex Sans', system-ui, sans-serif; color: var(--text);
+    background: rgba(255,255,255,.06); border: 1px solid var(--line); cursor: pointer;
+    transition: background .2s, border-color .2s, opacity .2s;
+  }
+  .btn:hover:not(:disabled) { background: rgba(6,182,212,.16); border-color: rgba(6,182,212,.5); }
+  .btn:disabled { opacity: .35; cursor: default; }
+  .btn-primary { background: rgba(6,182,212,.2); border-color: rgba(6,182,212,.55); color: #ecfeff; }
+  .btn-icon { width: 42px; padding: 0; justify-content: center; }
+  .dots { display: flex; align-items: center; }
+  .dot { padding: 10px 5px; background: none; border: 0; cursor: pointer; }
+  .dot span { display: block; height: 8px; width: 8px; border-radius: 999px; background: rgba(255,255,255,.25); transition: width .3s ease, background .3s ease; }
+  .dot:hover span { background: rgba(255,255,255,.5); }
+  .dot[aria-current="true"] span { width: 28px; background: var(--cyan); box-shadow: 0 0 12px rgba(6,182,212,.7); }
+  .count { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--muted); min-width: 42px; text-align: center; }
+  button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+  .slide::-webkit-scrollbar { width: 8px; }
+  .slide::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 8px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .slide, .slide[data-state="active"] { transition: none; }
+    .slide[data-state="active"] .scan { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-chev-l" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-chev-r" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-restart" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
+    <symbol id="i-full" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-map" viewBox="0 0 24 24"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><circle cx="11.5" cy="14.5" r="2.5"/><path d="m13.5 16.5 2 2"/></symbol>
+    <symbol id="i-bank" viewBox="0 0 24 24"><path d="M12 3 2 9h20z"/><path d="M5 9v10M10 9v10M14 9v10M19 9v10M3 21h18"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/></symbol>
+    <symbol id="i-cube" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></symbol>
+    <symbol id="i-pulse" viewBox="0 0 24 24"><path d="M3 12h4l2-6 4 12 2-6h6"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  </defs>
+</svg>
+
+<div id="app">
+  <div class="hazard" aria-hidden="true"></div>
+  <div class="bg" aria-hidden="true"></div>
+
+  <main class="stage" id="stage" aria-live="polite">
+
+    <!-- ============ SLIDE 1 — COVER ============ -->
+    <section class="slide" data-title="Cover" aria-label="Slide 1 of 5: Cover">
+      <div class="slide-inner">
+        <div class="grid items-center gap-8 lg:grid-cols-[1.15fr_.85fr] lg:gap-12">
+          <div class="flex flex-col gap-5 sm:gap-6">
+            <div class="flex flex-wrap gap-2">
+              <span class="chip chip-cyan"><span class="dot-live"></span>Infosys Springboard AI Project 2026</span>
+              <span class="chip chip-amber">DNN &amp; MWP</span>
+            </div>
+
+            <h1 class="display h-title grad-title m-0">BuildSure AI</h1>
+
+            <p class="m-0 max-w-[34ch] font-display text-[clamp(22px,2.7vw,38px)] font-medium leading-[1.1] text-slate-100">
+              Autonomous Multi-Agent Construction Risk &amp; Safety Intelligence Platform
+            </p>
+
+            <p class="txt m-0 max-w-[58ch] border-l-2 border-cyan-500/60 pl-4 text-slate-300">
+              Transforming construction safety from reactive checklists to autonomous, AI-driven predictive protection.
+            </p>
+
+            <p class="txt-sm m-0 max-w-[58ch] text-slate-300">
+              <strong class="text-cyan-200">4 Autonomous Agents</strong> — Site Risk, Safety, Compliance and Insurance — collaborate in real time to calculate a live risk score.
+            </p>
+
+            <dl class="glass txt-sm m-0 grid gap-x-6 gap-y-3 rounded-2xl p-4 sm:grid-cols-[auto_1fr] sm:p-5">
+              <dt class="muted">Presented by</dt>
+              <dd class="m-0 font-medium">Dhanusri S</dd>
+              <dt class="muted">Register number</dt>
+              <dd class="m-0 font-medium">711524BCS034</dd>
+              <dt class="muted">Program</dt>
+              <dd class="m-0 font-medium">MWP &amp; DNN Subject-Based Hackathon</dd>
+              <dt class="muted">Tech stack</dt>
+              <dd class="m-0 flex flex-wrap gap-1.5">
+                <span class="chip chip-cyan">YOLOv8 Vision</span>
+                <span class="chip">FastAPI Python</span>
+                <span class="chip">React 18 &amp; Vite</span>
+                <span class="chip">SQLite</span>
+                <span class="chip">pypdf &amp; OCR</span>
+              </dd>
+            </dl>
+          </div>
+
+          <!-- Detection scene -->
+          <figure class="m-0">
+            <div class="glass glass-cyan rounded-[28px] p-3">
+              <svg viewBox="0 0 420 520" class="block h-auto max-h-[60vh] w-full" role="img"
+                   aria-label="Illustration of a construction worker wearing a hardhat and vest, with detection boxes around the worker, the hardhat and the vest">
+                <defs>
+                  <linearGradient id="scanGrad" x1="0" x2="1" y1="0" y2="0">
+                    <stop offset="0" stop-color="#06b6d4" stop-opacity="0"/>
+                    <stop offset=".5" stop-color="#67e8f9"/>
+                    <stop offset="1" stop-color="#06b6d4" stop-opacity="0"/>
+                  </linearGradient>
+                  <radialGradient id="floor" cx=".5" cy=".5" r=".5">
+                    <stop offset="0" stop-color="#06b6d4" stop-opacity=".28"/>
+                    <stop offset="1" stop-color="#06b6d4" stop-opacity="0"/>
+                  </radialGradient>
+                  <clipPath id="bboxClip"><rect x="104" y="80" width="212" height="402"/></clipPath>
+                  <pattern id="gridp" width="28" height="28" patternUnits="userSpaceOnUse">
+                    <path d="M28 0H0V28" fill="none" stroke="#ffffff" stroke-opacity=".05"/>
+                  </pattern>
+                </defs>
+
+                <rect width="420" height="520" rx="18" fill="url(#gridp)"/>
+                <ellipse cx="210" cy="488" rx="125" ry="16" fill="url(#floor)"/>
+
+                <!-- worker -->
+                <rect x="116" y="192" width="30" height="150" rx="15" fill="#2a373c"/>
+                <rect x="274" y="192" width="30" height="150" rx="15" fill="#2a373c"/>
+                <rect x="160" y="352" width="48" height="128" rx="10" fill="#1f2a2e"/>
+                <rect x="212" y="352" width="48" height="128" rx="10" fill="#1f2a2e"/>
+                <path d="M146 198q0-14 22-16h84q22 2 22 16v152H146z" fill="#2a373c"/>
+                <path d="M156 202h30l24 26 24-26h30v146H156z" fill="#f59e0b" fill-opacity=".92"/>
+                <rect x="156" y="264" width="108" height="9" fill="#e7eef1" fill-opacity=".85"/>
+                <rect x="156" y="304" width="108" height="9" fill="#e7eef1" fill-opacity=".85"/>
+                <rect x="198" y="168" width="24" height="26" rx="6" fill="#3a4b52"/>
+                <circle cx="210" cy="140" r="30" fill="#3a4b52"/>
+                <path d="M174 138a36 36 0 0 1 72 0z" fill="#e7eef1"/>
+                <rect x="166" y="134" width="88" height="9" rx="4.5" fill="#cfd9dd"/>
+
+                <!-- scan line -->
+                <g clip-path="url(#bboxClip)"><rect class="scan" x="104" y="80" width="212" height="3" fill="url(#scanGrad)"/></g>
+
+                <!-- worker box -->
+                <rect x="104" y="80" width="212" height="402" fill="rgba(6,182,212,.04)" stroke="#06b6d4" stroke-width="1.2" stroke-dasharray="4 4"/>
+                <path d="M104 98V80h18M298 80h18v18M316 464v18h-18M122 482h-18v-18" fill="none" stroke="#22d3ee" stroke-width="3" stroke-linecap="round"/>
+                <rect x="104" y="58" width="102" height="20" rx="4" fill="#06b6d4"/>
+                <text class="hud" x="112" y="72" font-size="11" font-weight="500" fill="#04181c">worker 0.97</text>
+
+                <!-- hardhat box -->
+                <rect x="164" y="98" width="92" height="50" fill="rgba(16,185,129,.1)" stroke="#10b981" stroke-width="1.6"/>
+                <line x1="256" y1="110" x2="270" y2="110" stroke="#10b981" stroke-width="1.2"/>
+                <rect x="270" y="100" width="98" height="20" rx="4" fill="#10b981"/>
+                <text class="hud" x="278" y="114" font-size="11" font-weight="500" fill="#03170f">hardhat 0.94</text>
+
+                <!-- vest box -->
+                <rect x="150" y="198" width="120" height="152" fill="rgba(245,158,11,.08)" stroke="#f59e0b" stroke-width="1.6"/>
+                <line x1="98" y1="208" x2="150" y2="208" stroke="#f59e0b" stroke-width="1.2"/>
+                <rect x="16" y="198" width="82" height="20" rx="4" fill="#f59e0b"/>
+                <text class="hud" x="24" y="212" font-size="11" font-weight="500" fill="#1f1300">vest 0.91</text>
+
+                <!-- HUD -->
+                <rect x="14" y="14" width="132" height="22" rx="11" fill="rgba(245,158,11,.14)" stroke="#f59e0b" stroke-opacity=".6"/>
+                <text class="hud" x="26" y="29" font-size="11" fill="#fde68a">Scaffold zone ×1.5</text>
+                <text class="hud" x="406" y="29" font-size="11" fill="#a5f3fc" text-anchor="end">30+ FPS</text>
+                <text class="hud" x="16" y="508" font-size="11" fill="#6ee7b7">PPE check: helmet and vest found</text>
+              </svg>
+            </div>
+            <figcaption class="txt-sm muted mt-2 text-center">Illustrative detection overlay</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SLIDE 2 — PROBLEM / SOLUTION / NOVELTY ============ -->
+    <section class="slide" data-title="Problem &amp; novelty" aria-label="Slide 2 of 5: Problem, solution and novelty">
+      <div class="slide-inner">
+        <h2 class="display h-slide m-0">The problem, our solution, and what is new</h2>
+
+        <div class="grid gap-4 md:grid-cols-2 lg:gap-5">
+          <!-- Problem -->
+          <article class="glass accent-rose rounded-2xl p-4 sm:p-5">
+            <h3 class="display h-card m-0 text-rose-300">Current industry reality</h3>
+            <ul class="txt-sm m-0 mt-3 flex list-none flex-col gap-3 p-0 text-slate-300">
+              <li class="flex gap-3"><span class="mt-[.5em] h-2 w-2 flex-none rounded-[2px] bg-rose-400"></span>
+                <p class="m-0"><strong class="text-slate-100">Fatal accidents, delayed detection.</strong> 1 in 5 worker fatalities occur in construction, and manual safety inspections miss 60%+ of real-time PPE violations.</p></li>
+              <li class="flex gap-3"><span class="mt-[.5em] h-2 w-2 flex-none rounded-[2px] bg-rose-400"></span>
+                <p class="m-0"><strong class="text-slate-100">Fragmented compliance.</strong> Safety manuals (OSHA, BOCW, ISO) are trapped in hundreds of PDF pages with no live verification.</p></li>
+              <li class="flex gap-3"><span class="mt-[.5em] h-2 w-2 flex-none rounded-[2px] bg-rose-400"></span>
+                <p class="m-0"><strong class="text-slate-100">Slow insurance claims.</strong> Post-incident investigations take weeks because there is no tamper-evident visual telemetry or supervisor audit trail.</p></li>
+            </ul>
+          </article>
+
+          <!-- Solution -->
+          <article class="glass glass-cyan accent-cyan rounded-2xl p-4 sm:p-5">
+            <h3 class="display h-card m-0 text-cyan-300">BuildSure AI breakthrough</h3>
+            <ul class="txt-sm m-0 mt-3 flex list-none flex-col gap-3 p-0 text-slate-300">
+              <li class="flex gap-3"><span class="mt-[.5em] h-2 w-2 flex-none rounded-[2px] bg-cyan-400"></span>
+                <p class="m-0"><strong class="text-slate-100">Autonomous multi-agent ecosystem.</strong> Site Risk, Safety, Compliance and Insurance agents collaborate in real time.</p></li>
+              <li class="flex gap-3"><span class="mt-[.5em] h-2 w-2 flex-none rounded-[2px] bg-cyan-400"></span>
+                <p class="m-0"><strong class="text-slate-100">Deterministic multi-factor scoring.</strong> A mathematical risk pulse, <span class="whitespace-nowrap text-cyan-200">P × I × E</span>, plus a unified project risk score (0.35 × Safety + 0.35 × Compliance + 0.30 × Insurance) calculated per zone.</p></li>
+              <li class="flex gap-3"><span class="mt-[.5em] h-2 w-2 flex-none rounded-[2px] bg-cyan-400"></span>
+                <p class="m-0"><strong class="text-slate-100">Instant audit trails.</strong> Automated supervisor resolution workflows and audit logs with zero cloud lock-in.</p></li>
+            </ul>
+          </article>
+        </div>
+
+        <!-- Novelty table -->
+        <div>
+          <h3 class="display h-card m-0 mb-2 text-slate-100">Novelty vs existing tools</h3>
+          <div class="glass overflow-x-auto rounded-2xl">
+            <table class="cmp txt-sm">
+              <thead><tr><th>Feature</th><th>Existing safety tools</th><th>BuildSure AI</th></tr></thead>
+              <tbody>
+                <tr><td>PPE inspection</td><td>Static cameras, human review</td><td>YOLOv8 vision + head/torso geometric spatial anchoring</td></tr>
+                <tr><td>Zone context</td><td>One rule for all</td><td>Dynamic zone multipliers (Scaffold 1.5x, Excavation 1.2x)</td></tr>
+                <tr><td>Compliance</td><td>Manual paper audits</td><td>Local pypdf &amp; OCR regex engine matching OSHA/BOCW citations</td></tr>
+                <tr><td>Insurance</td><td>Delayed claim filing</td><td>Automated 5-item audit dossier &amp; exposure risk gauge</td></tr>
+                <tr><td>Executive reports</td><td>Generic manual spreadsheets</td><td>Deterministic cross-agent risk score (0.35S + 0.35C + 0.30I) &amp; timeline</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SLIDE 3 — DNN & MWP ============ -->
+    <section class="slide" data-title="DNN &amp; MWP" aria-label="Slide 3 of 5: Deep Neural Networks and Modern Web Programming">
+      <div class="slide-inner">
+        <h2 class="display h-slide m-0">Two pillars: deep vision and modern web</h2>
+
+        <div class="grid gap-4 lg:grid-cols-2 lg:gap-5">
+          <!-- DNN -->
+          <article class="glass glass-cyan flex flex-col gap-4 rounded-[24px] p-4 sm:p-6">
+            <header>
+              <h3 class="display h-card m-0 text-cyan-300">Deep Neural Networks (DNN)</h3>
+              <div class="mt-3 flex flex-wrap gap-1.5">
+                <span class="chip chip-cyan">YOLOv8</span>
+                <span class="chip chip-cyan">30+ FPS</span>
+                <span class="chip chip-cyan">Confidence calibration</span>
+              </div>
+            </header>
+
+            <p class="txt-sm m-0 text-slate-300"><strong class="text-slate-100">YOLOv8 object detection.</strong> A fine-tuned model, trained on Hugging Face &amp; Roboflow construction-safety datasets, inferencing at 30+ FPS across 10 classes (Hardhat, Safety Vest, Person, NO-Hardhat, NO-Safety Vest, Machinery, Vehicle and more).</p>
+
+            <div class="flex items-center gap-4 rounded-2xl border border-white/10 bg-black/20 p-3 sm:gap-6 sm:p-4">
+              <svg viewBox="0 0 200 210" class="block w-[42%] max-w-[190px] flex-none" role="img"
+                   aria-label="Diagram of a worker bounding box: the upper 35 percent is the helmet zone and the middle 40 percent is the vest zone">
+                <rect x="30" y="6" width="90" height="198" rx="4" fill="none" stroke="#06b6d4" stroke-width="1.4"/>
+                <rect x="30" y="6" width="90" height="69.3" fill="rgba(16,185,129,.2)" stroke="#10b981" stroke-dasharray="4 3"/>
+                <rect x="30" y="75.3" width="90" height="79.2" fill="rgba(245,158,11,.2)" stroke="#f59e0b" stroke-dasharray="4 3"/>
+                <circle cx="75" cy="38" r="14" fill="#3a4b52"/>
+                <path d="M60 36a15 15 0 0 1 30 0z" fill="#e7eef1"/>
+                <rect x="53" y="56" width="44" height="70" rx="8" fill="#3a4b52"/>
+                <rect x="60" y="150" width="14" height="50" rx="4" fill="#2a373c"/>
+                <rect x="76" y="150" width="14" height="50" rx="4" fill="#2a373c"/>
+                <text class="hud" x="24" y="44" font-size="11" fill="#6ee7b7" text-anchor="end">35%</text>
+                <text class="hud" x="24" y="120" font-size="11" fill="#fcd34d" text-anchor="end">40%</text>
+                <text x="128" y="42" font-size="12" fill="#a7f3d0" font-family="'IBM Plex Sans',sans-serif">Helmet</text>
+                <text x="128" y="118" font-size="12" fill="#fde68a" font-family="'IBM Plex Sans',sans-serif">Vest</text>
+              </svg>
+              <div class="txt-sm text-slate-300">
+                <p class="m-0"><strong class="text-slate-100">Head &amp; torso geometric spatial association</strong></p>
+                <ul class="m-0 mt-2 flex list-none flex-col gap-2 p-0">
+                  <li class="flex gap-2.5"><span class="mt-[.5em] h-2 w-2 flex-none rounded-[2px] bg-emerald-400"></span><span>Upper 35% of the bounding box anchors helmet compliance.</span></li>
+                  <li class="flex gap-2.5"><span class="mt-[.5em] h-2 w-2 flex-none rounded-[2px] bg-amber-400"></span><span>Middle 40% anchors high-visibility vest compliance.</span></li>
+                </ul>
+              </div>
+            </div>
+
+            <p class="txt-sm m-0 text-slate-300"><strong class="text-slate-100">Confidence calibration.</strong> Eliminates false alarms by flagging uncertain detections as <code class="mono rounded bg-white/10 px-1.5 py-0.5 text-[.92em] text-cyan-200">needs_human_review</code>.</p>
+          </article>
+
+          <!-- MWP -->
+          <article class="glass accent-emerald flex flex-col gap-4 rounded-[24px] p-4 sm:p-6">
+            <header>
+              <h3 class="display h-card m-0 text-emerald-300">Modern Web Programming (MWP)</h3>
+              <div class="mt-3 flex flex-wrap gap-1.5">
+                <span class="chip chip-emerald">React 18</span>
+                <span class="chip chip-emerald">Vite 5</span>
+                <span class="chip chip-emerald">FastAPI</span>
+                <span class="chip chip-emerald">SQLite</span>
+                <span class="chip chip-emerald">Recharts</span>
+                <span class="chip chip-emerald">pypdf + pytesseract</span>
+                <span class="chip chip-emerald">JSON / CSV / PDF export</span>
+              </div>
+            </header>
+
+            <ul class="txt-sm m-0 flex list-none flex-col gap-4 p-0 text-slate-300">
+              <li class="flex gap-3"><span class="mt-[.5em] h-2 w-2 flex-none rounded-[2px] bg-emerald-400"></span>
+                <p class="m-0"><strong class="text-slate-100">High-performance React 18 + Vite 5.</strong> Sub-second UI updates, a glassmorphic HUD design, Recharts visualizations and native print CSS.</p></li>
+              <li class="flex gap-3"><span class="mt-[.5em] h-2 w-2 flex-none rounded-[2px] bg-emerald-400"></span>
+                <p class="m-0"><strong class="text-slate-100">Asynchronous FastAPI gateway.</strong> A high-concurrency Python backend on a Uvicorn ASGI server, with SQLAlchemy ORM streaming live telemetry and image inference.</p></li>
+              <li class="flex gap-3"><span class="mt-[.5em] h-2 w-2 flex-none rounded-[2px] bg-emerald-400"></span>
+                <p class="m-0"><strong class="text-slate-100">Zero-paid-API architecture.</strong> 100% free local document extraction via pypdf, with a pytesseract OCR fallback.</p></li>
+              <li class="flex gap-3"><span class="mt-[.5em] h-2 w-2 flex-none rounded-[2px] bg-emerald-400"></span>
+                <p class="m-0"><strong class="text-slate-100">Multi-format enterprise exports.</strong> Instant JSON export, standardized CSV generation and native print / save-to-PDF styling.</p></li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SLIDE 4 — PERSONAS & ROADMAP ============ -->
+    <section class="slide" data-title="Users &amp; milestones" aria-label="Slide 4 of 5: User personas and completed milestones">
+      <div class="slide-inner">
+        <h2 class="display h-slide m-0">Who benefits, and what we've shipped</h2>
+
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4">
+          <article class="glass flex flex-col gap-3 rounded-2xl p-4">
+            <div class="icon-box bg-cyan-400/15 text-cyan-300"><svg class="icon"><use href="#i-chart"/></svg></div>
+            <h3 class="display h-card m-0">Project Directors</h3>
+            <p class="txt-sm m-0 text-slate-300">A consolidated 0–100 unified risk score with one-click PDF/CSV exports.</p>
+            <p class="txt-sm m-0 mt-auto border-t border-white/10 pt-3"><span class="muted">Dashboard</span><br><span class="font-medium text-cyan-200">Executive Reports</span></p>
+          </article>
+          <article class="glass flex flex-col gap-3 rounded-2xl p-4">
+            <div class="icon-box bg-emerald-400/15 text-emerald-300"><svg class="icon"><use href="#i-shield"/></svg></div>
+            <h3 class="display h-card m-0">Safety Supervisors</h3>
+            <p class="txt-sm m-0 text-slate-300">Live YOLO vision detections, violation tracking and instant alert triage.</p>
+            <p class="txt-sm m-0 mt-auto border-t border-white/10 pt-3"><span class="muted">Dashboard</span><br><span class="font-medium text-emerald-200">PPE Safety &amp; Alert Center</span></p>
+          </article>
+          <article class="glass flex flex-col gap-3 rounded-2xl p-4">
+            <div class="icon-box bg-amber-400/15 text-amber-300"><svg class="icon"><use href="#i-doc"/></svg></div>
+            <h3 class="display h-card m-0">Compliance Auditors</h3>
+            <p class="txt-sm m-0 text-slate-300">Automated OSHA / BOCW rule citations with exact document page numbers.</p>
+            <p class="txt-sm m-0 mt-auto border-t border-white/10 pt-3"><span class="muted">Dashboard</span><br><span class="font-medium text-amber-200">Compliance Hub</span></p>
+          </article>
+          <article class="glass flex flex-col gap-3 rounded-2xl p-4">
+            <div class="icon-box bg-cyan-400/15 text-cyan-300"><svg class="icon"><use href="#i-bank"/></svg></div>
+            <h3 class="display h-card m-0">Insurance Underwriters</h3>
+            <p class="txt-sm m-0 text-slate-300">5-item claim dossiers with exposure scores (0–100) and legal disclaimers.</p>
+            <p class="txt-sm m-0 mt-auto border-t border-white/10 pt-3"><span class="muted">Dashboard</span><br><span class="font-medium text-cyan-200">Insurance Hub</span></p>
+          </article>
+        </div>
+
+        <div>
+          <h3 class="display h-card m-0 mb-3">Completed milestones <span class="chip chip-emerald align-middle">100% operational</span></h3>
+          <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4">
+            <div class="glass accent-emerald rounded-2xl p-4">
+              <div class="flex items-center gap-2"><span class="icon-box !h-9 !w-9 bg-emerald-400/15 text-emerald-300"><svg class="icon !h-4 !w-4"><use href="#i-check"/></svg></span><h4 class="m-0 text-[15px] font-semibold">Milestone 1</h4></div>
+              <p class="txt-sm m-0 mt-2 font-medium text-slate-100">Site risk matrix &amp; spatial map</p>
+              <p class="txt-sm muted m-0 mt-1">Autonomous site risk matrix (P × I × E) and 2D spatial site map grid.</p>
+            </div>
+            <div class="glass accent-emerald rounded-2xl p-4">
+              <div class="flex items-center gap-2"><span class="icon-box !h-9 !w-9 bg-emerald-400/15 text-emerald-300"><svg class="icon !h-4 !w-4"><use href="#i-check"/></svg></span><h4 class="m-0 text-[15px] font-semibold">Milestone 2</h4></div>
+              <p class="txt-sm m-0 mt-2 font-medium text-slate-100">PPE vision &amp; alert workflows</p>
+              <p class="txt-sm muted m-0 mt-1">YOLOv8 worker PPE vision intelligence and supervisor alert resolution workflows.</p>
+            </div>
+            <div class="glass accent-emerald rounded-2xl p-4">
+              <div class="flex items-center gap-2"><span class="icon-box !h-9 !w-9 bg-emerald-400/15 text-emerald-300"><svg class="icon !h-4 !w-4"><use href="#i-check"/></svg></span><h4 class="m-0 text-[15px] font-semibold">Milestone 3</h4></div>
+              <p class="txt-sm m-0 mt-2 font-medium text-slate-100">Compliance &amp; insurance dossiers</p>
+              <p class="txt-sm muted m-0 mt-1">Offline regulatory compliance engine (OSHA/BOCW) and 5-item insurance claim dossiers.</p>
+            </div>
+            <div class="glass accent-emerald rounded-2xl p-4">
+              <div class="flex items-center gap-2"><span class="icon-box !h-9 !w-9 bg-emerald-400/15 text-emerald-300"><svg class="icon !h-4 !w-4"><use href="#i-check"/></svg></span><h4 class="m-0 text-[15px] font-semibold">Milestone 4</h4></div>
+              <p class="txt-sm m-0 mt-2 font-medium text-slate-100">Risk intelligence &amp; exports</p>
+              <p class="txt-sm muted m-0 mt-1">Construction risk intelligence engine (0.35S + 0.35C + 0.30I), executive scorecard, multi-format exports and risk decision timeline.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SLIDE 5 — THANK YOU ============ -->
+    <section class="slide" data-title="Thank you" aria-label="Slide 5 of 5: Thank you">
+      <div class="slide-inner items-center">
+        <div class="glass glass-cyan flex w-full max-w-[820px] flex-col items-center gap-8 rounded-[32px] p-8 text-center sm:p-12">
+          <div>
+            <p class="display m-0 text-[clamp(64px,11vw,150px)] grad-title">Thank you!</p>
+            <p class="m-0 mt-3 font-display text-[clamp(20px,2.4vw,32px)] font-medium leading-tight text-slate-100">BuildSure AI — Autonomous Multi-Agent Construction Risk Intelligence Platform</p>
+            <p class="txt m-0 mt-3 max-w-[52ch] text-slate-300">Transforming site safety, regulatory compliance, and construction risk into proactive intelligence.</p>
+            <p class="chip chip-cyan mt-4 !text-[14px]">Questions &amp; answers invited</p>
+          </div>
+          <dl class="txt m-0 grid w-full max-w-[520px] gap-x-6 gap-y-3 border-t border-white/10 pt-6 text-left sm:grid-cols-[auto_1fr]">
+            <dt class="muted">Presented by</dt>
+            <dd class="m-0 font-medium text-slate-100">Dhanusri S</dd>
+            <dt class="muted">Register number</dt>
+            <dd class="m-0 font-medium text-slate-100">711524BCS034</dd>
+            <dt class="muted">Program</dt>
+            <dd class="m-0 font-medium text-slate-100">MWP &amp; DNN Subject-Based Hackathon</dd>
+          </dl>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Controls -->
+  <nav class="dock" aria-label="Slide navigation">
+    <div class="dock-in glass">
+      <button class="btn btn-icon sm:!w-auto sm:!px-4" id="prev" type="button" aria-label="Previous slide">
+        <svg class="icon !h-[18px] !w-[18px]"><use href="#i-chev-l"/></svg><span class="hidden sm:inline">Previous</span>
+      </button>
+      <div class="dots" id="dots"></div>
+      <span class="count" id="count" aria-hidden="true">1 / 5</span>
+      <button class="btn btn-primary btn-icon sm:!w-auto sm:!px-4" id="next" type="button" aria-label="Next slide">
+        <span class="hidden sm:inline" id="nextLabel">Next</span><svg class="icon !h-[18px] !w-[18px]" id="nextIcon"><use href="#i-chev-r"/></svg>
+      </button>
+      <button class="btn btn-icon" id="full" type="button" aria-label="Toggle fullscreen" hidden>
+        <svg class="icon !h-[18px] !w-[18px]"><use href="#i-full"/></svg>
+      </button>
+    </div>
+  </nav>
+</div>
+
+<script>
+(function () {
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var dotsEl = document.getElementById('dots');
+  var prev = document.getElementById('prev');
+  var next = document.getElementById('next');
+  var nextLabel = document.getElementById('nextLabel');
+  var nextIcon = document.getElementById('nextIcon').querySelector('use');
+  var count = document.getElementById('count');
+  var full = document.getElementById('full');
+  var stage = document.getElementById('stage');
+  var current = 0;
+
+  slides.forEach(function (s, idx) {
+    var b = document.createElement('button');
+    b.className = 'dot';
+    b.type = 'button';
+    b.setAttribute('aria-label', 'Go to slide ' + (idx + 1) + ': ' + s.getAttribute('data-title').replace(/&amp;/g, '&'));
+    b.innerHTML = '<span></span>';
+    b.addEventListener('click', function () { go(idx); });
+    dotsEl.appendChild(b);
+  });
+  var dots = Array.prototype.slice.call(dotsEl.children);
+
+  function go(n) {
+    n = Math.max(0, Math.min(slides.length - 1, n));
+    current = n;
+    slides.forEach(function (s, idx) {
+      var state = idx === n ? 'active' : (idx < n ? 'past' : 'next');
+      s.setAttribute('data-state', state);
+      if (idx === n) { s.removeAttribute('inert'); s.removeAttribute('aria-hidden'); s.scrollTop = 0; }
+      else { s.setAttribute('inert', ''); s.setAttribute('aria-hidden', 'true'); }
+    });
+    dots.forEach(function (d, idx) { d.setAttribute('aria-current', idx === n ? 'true' : 'false'); });
+    count.textContent = (n + 1) + ' / ' + slides.length;
+    prev.disabled = n === 0;
+    var last = n === slides.length - 1;
+    nextLabel.textContent = last ? 'Start over' : 'Next';
+    next.setAttribute('aria-label', last ? 'Back to first slide' : 'Next slide');
+    nextIcon.setAttribute('href', last ? '#i-restart' : '#i-chev-r');
+    try { history.replaceState(null, '', '#' + (n + 1)); } catch (e) {}
+  }
+
+  prev.addEventListener('click', function () { go(current - 1); });
+  next.addEventListener('click', function () { go(current === slides.length - 1 ? 0 : current + 1); });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    var onButton = e.target && e.target.closest && e.target.closest('button');
+    switch (e.key) {
+      case 'ArrowRight': case 'PageDown': go(current + 1); e.preventDefault(); break;
+      case 'ArrowLeft': case 'PageUp': go(current - 1); e.preventDefault(); break;
+      case ' ': if (!onButton) { go(current + 1); e.preventDefault(); } break;
+      case 'Home': go(0); e.preventDefault(); break;
+      case 'End': go(slides.length - 1); e.preventDefault(); break;
+      case 'f': case 'F': toggleFull(); break;
+    }
+  });
+
+  var sx = 0, sy = 0;
+  stage.addEventListener('touchstart', function (e) {
+    var t = e.changedTouches[0]; sx = t.clientX; sy = t.clientY;
+  }, { passive: true });
+  stage.addEventListener('touchend', function (e) {
+    if (e.target.closest && e.target.closest('.overflow-x-auto')) return;
+    var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) go(dx < 0 ? current + 1 : current - 1);
+  }, { passive: true });
+
+  function toggleFull() {
+    try {
+      if (!document.fullscreenEnabled) return;
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen();
+    } catch (e) {}
+  }
+  if (document.fullscreenEnabled) { full.hidden = false; full.addEventListener('click', toggleFull); }
+
+  var start = 0;
+  try { var h = parseInt(location.hash.replace('#', ''), 10); if (h >= 1 && h <= slides.length) start = h - 1; } catch (e) {}
+  go(start);
+})();
+</script>
+</body>
+</html>

@@ -13,6 +13,7 @@ from app import models, schemas
 from app.services.yolo_detector import yolo_detector
 from app.services.safety_agent import safety_agent
 from app.services.n8n_dispatcher import n8n_dispatcher
+from app.services.video_safety_service import video_safety_service
 
 router = APIRouter()
 
@@ -189,6 +190,45 @@ async def analyze_safety_image(
         "recommendations": agent_result["recommendations"],
         "disclaimer": "AI detections are decision-support signals and require safety supervisor verification."
     }
+
+@router.post("/api/safety/analyze-video", response_model=schemas.VideoSafetyAnalysisResponse)
+async def analyze_safety_video(
+    file: UploadFile = File(...),
+    project_id: str = Form("PRJ-101"),
+    zone_name: str = Form("General Work Zone"),
+    sampling_mode: str = Form("1fps"),
+    db: Session = Depends(get_db)
+):
+    """
+    Offline Video Safety Analysis Endpoint (Post-M4 Extension)
+    Processes uploaded construction site footage (.mp4, .avi, .mov), samples frames,
+    executes YOLO PPE detection & SafetyAgent rules, groups repeated temporal detections,
+    and returns consolidated incidents, metadata, and keyframe/video evidence.
+    """
+    try:
+        content = await file.read()
+        if not content:
+            raise HTTPException(status_code=400, detail="Uploaded video file is empty.")
+
+        result = video_safety_service.analyze_video(
+            video_bytes=content,
+            filename=file.filename or "video.mp4",
+            content_type=file.content_type,
+            project_id=project_id,
+            zone_name=zone_name,
+            sampling_mode=sampling_mode,
+            db=db
+        )
+        return result
+
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except RuntimeError as re:
+        raise HTTPException(status_code=500, detail=str(re))
+    except Exception as e:
+        print(f"[BuildSure AI] Video safety analysis error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to process offline video: {str(e)}")
+
 
 @router.get("/api/safety/violations", response_model=list[schemas.PPEViolationSchema])
 def get_violations(

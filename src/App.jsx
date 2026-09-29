@@ -16,6 +16,7 @@ import AgentNetworkPage from './components/pages/AgentNetworkPage';
 import ExecutiveReportsPage from './components/pages/ExecutiveReportsPage';
 import CompliancePage from './components/pages/CompliancePage';
 import InsurancePage from './components/pages/InsurancePage';
+import SettingsPage from './components/pages/SettingsPage';
 
 // Agent Reasoning Drawer
 import AgentReasoningDrawer from './components/AgentReasoningDrawer';
@@ -143,6 +144,7 @@ function AppContent() {
         {activeTab === 'PPE_DETECTION' && (
           <PPESafetyPage
             selectedProject={selectedProject}
+            onNavigateTab={setActiveTab}
           />
         )}
 
@@ -179,19 +181,16 @@ function AppContent() {
           />
         )}
 
-        {/* Tab 9: Reports (Image 2 Right) */}
+        {/* Tab 9: Executive Reports (Milestone 4) */}
         {activeTab === 'REPORTS' && (
-          <ExecutiveReportsPage />
+          <ExecutiveReportsPage
+            onNavigateTab={setActiveTab}
+          />
         )}
 
         {/* Tab 10: Settings / Support */}
         {(activeTab === 'SETTINGS' || activeTab === 'SUPPORT') && (
-          <div className="glass-panel p-8 rounded-2xl border border-[#3c494c]/30 text-center space-y-3">
-            <h3 className="text-lg font-bold text-[#e0e3e5] font-sans">BuildSure AI System Configuration</h3>
-            <p className="text-xs font-mono text-[#859397]">
-              Vigilance System v2.4 • FastAPI & YOLOv8 Inference Active
-            </p>
-          </div>
+          <SettingsPage />
         )}
 
       </main>

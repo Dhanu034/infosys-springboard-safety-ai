@@ -119,47 +119,149 @@ def get_executive_summary_report(
             "disclaimers": STANDARD_DISCLAIMERS,
             "metrics": {
                 "message": "No records available for selected project and period.",
-                "executive_health_summary": None,
+                "overall_risk_score": None,
+                "risk_tier": None,
+                "score_status": "INSUFFICIENT_DATA",
+                "score_explanation": "No records available for selected project and period.",
+                "safety_risk": None,
+                "compliance_risk": None,
+                "insurance_risk": None,
                 "safety_score": None,
                 "ppe_compliance_rate": None,
                 "site_risk_score": None,
                 "regulatory_compliance_rate": None,
                 "insurance_exposure_score": None,
                 "open_critical_alerts": 0,
+                "open_violations": 0,
                 "overdue_inspections": 0,
+                "human_review_items": 0,
+                "top_hazards": [],
+                "high_risk_zones": [],
+                "repeated_violations": [],
+                "top_recommendations": [],
                 "unresolved_actions": []
             }
         }
 
-    # Distinct metrics definitions:
-    # 1. Safety Score
-    risk_scores = [v.final_risk_score for v in violations if v.final_risk_score is not None]
-    avg_risk = sum(risk_scores) / len(risk_scores) if risk_scores else 0.0
-    safety_score = round(max(0.0, min(100.0, 100.0 - avg_risk)), 1) if risk_scores else None
+    # 1. Safety Dimension Telemetry
+    valid_risk_scores = [v.final_risk_score for v in violations if v.final_risk_score is not None]
+    if valid_risk_scores:
+        avg_risk = sum(valid_risk_scores) / len(valid_risk_scores)
+        safety_risk = round(avg_risk, 1)
+        safety_score = round(max(0.0, min(100.0, 100.0 - avg_risk)), 1)
+        site_risk_score = round(avg_risk, 1)
+    else:
+        safety_risk = None
+        safety_score = None
+        site_risk_score = None
 
-    # 2. PPE Compliance Rate
-    compliant_count = sum(1 for v in violations if v.decision_status == "compliant" or v.violation_type == "compliant")
-    ppe_compliance_rate = round((compliant_count / len(violations)) * 100.0, 1) if violations else None
+    if violations:
+        compliant_count = sum(1 for v in violations if v.decision_status == "compliant" or v.violation_type == "compliant")
+        ppe_compliance_rate = round((compliant_count / len(violations)) * 100.0, 1)
+    else:
+        ppe_compliance_rate = None
 
-    # 3. Site Risk Score
-    site_risk_score = round(avg_risk, 1) if risk_scores else None
+    # 2. Compliance Dimension Telemetry
+    if evals:
+        comp_evals_count = sum(1 for ev in evals if ev.status == "compliant" or ev.human_reviewed)
+        regulatory_compliance_rate = round((comp_evals_count / len(evals)) * 100.0, 1)
+        # Compliance Risk: Percentage of non-compliant or missing-evidence evaluations
+        non_comp_count = sum(1 for ev in evals if ev.status in ["non_compliant", "missing_evidence"])
+        compliance_risk = round((non_comp_count / len(evals)) * 100.0, 1)
+    else:
+        regulatory_compliance_rate = None
+        compliance_risk = None
 
-    # 4. Regulatory Compliance Rate
-    comp_evals = [ev for ev in evals if ev.status == "compliant" or ev.human_reviewed]
-    regulatory_compliance_rate = round((len(comp_evals) / len(evals)) * 100.0, 1) if evals else None
-
-    # 5. Insurance Exposure Score
+    # 3. Insurance Dimension Telemetry
     exp_scores = [ia.exposure_score for ia in insurance_assessments if ia.exposure_score is not None]
-    insurance_exposure_score = round(sum(exp_scores) / len(exp_scores), 1) if exp_scores else None
+    if exp_scores:
+        insurance_exposure_score = round(sum(exp_scores) / len(exp_scores), 1)
+        insurance_risk = insurance_exposure_score
+    else:
+        insurance_exposure_score = None
+        insurance_risk = None
 
-    # 6. Executive Health Summary (Composite index)
-    health_components = [s for s in [safety_score, ppe_compliance_rate, regulatory_compliance_rate] if s is not None]
-    executive_health_summary = round(sum(health_components) / len(health_components), 1) if health_components else None
+    # 4. Deterministic Unified Project Risk Score Computation
+    # Formula: Unified Project Risk = round(0.35 * SafetyRisk + 0.35 * ComplianceRisk + 0.30 * InsuranceRisk)
+    # Rule: Only calculate when all required source dimensions are available. Missing data must NOT be treated as zero.
+    if safety_risk is not None and compliance_risk is not None and insurance_risk is not None:
+        overall_risk_score = round(0.35 * safety_risk + 0.35 * compliance_risk + 0.30 * insurance_risk)
+        if overall_risk_score >= 75:
+            risk_tier = "CRITICAL"
+        elif overall_risk_score >= 50:
+            risk_tier = "HIGH"
+        elif overall_risk_score >= 25:
+            risk_tier = "MODERATE"
+        else:
+            risk_tier = "LOW"
+        score_status = "CALCULATED"
+        score_explanation = f"Unified Project Risk of {overall_risk_score}/100 computed via deterministic formula: 35% Safety ({safety_risk}) + 35% Compliance ({compliance_risk}) + 30% Insurance ({insurance_risk})."
+    else:
+        overall_risk_score = None
+        risk_tier = None
+        score_status = "INSUFFICIENT_DATA"
+        missing = []
+        if safety_risk is None: missing.append("Safety Risk")
+        if compliance_risk is None: missing.append("Compliance Risk")
+        if insurance_risk is None: missing.append("Insurance Risk")
+        score_explanation = f"Unified score withheld: Missing required source dimensions ({', '.join(missing)}). Missing data is not treated as zero."
 
+    # Counts & Human Review Items
     open_critical_alerts = sum(1 for a in alerts if a.severity == "CRITICAL" and a.status == "OPEN")
+    open_violations = sum(1 for v in violations if v.status == "OPEN")
     overdue_inspections = sum(1 for s in schedules if s.status == "OVERDUE")
+    human_review_items = (
+        sum(1 for v in violations if v.decision_status == "needs_human_review") +
+        sum(1 for ev in evals if ev.status == "needs_human_review" and not ev.human_reviewed) +
+        sum(1 for ia in insurance_assessments if ia.decision_status == "PENDING_HUMAN_REVIEW")
+    )
 
-    # Unresolved actions
+    # 5. Top Hazards, High-Risk Zones, and Repeated Violations
+    zone_counts: Dict[str, int] = {}
+    type_counts: Dict[str, int] = {}
+    for v in violations:
+        if v.zone_name:
+            zone_counts[v.zone_name] = zone_counts.get(v.zone_name, 0) + 1
+        if v.violation_type and v.violation_type != "compliant":
+            type_counts[v.violation_type] = type_counts.get(v.violation_type, 0) + 1
+
+    high_risk_zones = sorted(
+        [{"zone_name": k, "violations_count": v} for k, v in zone_counts.items()],
+        key=lambda x: x["violations_count"],
+        reverse=True
+    )
+
+    repeated_violations = sorted(
+        [{"violation_type": k, "occurrence_count": v} for k, v in type_counts.items() if v > 1],
+        key=lambda x: x["occurrence_count"],
+        reverse=True
+    )
+
+    top_hazards = [
+        {
+            "violation_id": v.violation_id,
+            "zone_name": v.zone_name,
+            "violation_type": v.violation_type,
+            "risk_score": v.final_risk_score,
+            "risk_category": v.risk_category,
+            "detected_at": v.detected_at
+        } for v in sorted(violations, key=lambda x: (x.final_risk_score or 0.0), reverse=True)[:5]
+    ]
+
+    # 6. Operational Recommendations derived deterministically from unresolved findings
+    top_recommendations = []
+    if open_critical_alerts > 0:
+        top_recommendations.append(f"Immediate Action: Dispatch safety supervisor to acknowledge and resolve {open_critical_alerts} open CRITICAL safety alerts.")
+    if overdue_inspections > 0:
+        top_recommendations.append(f"Statutory Action: Schedule mandatory equipment/site audits for {overdue_inspections} OVERDUE inspection checkpoints.")
+    if human_review_items > 0:
+        top_recommendations.append(f"Compliance Action: Complete supervisor adjudication for {human_review_items} items flagged for human review.")
+    if high_risk_zones:
+        top_recommendations.append(f"Zone Protocol: Reinforce PPE compliance audits in '{high_risk_zones[0]['zone_name']}' which accounts for {high_risk_zones[0]['violations_count']} detected incidents.")
+    if not top_recommendations and has_data:
+        top_recommendations.append("Operational Status: All site telemetry indicators currently within normal operational safety parameters.")
+
+    # Unresolved actions list for audit
     unresolved_actions = []
     for a in alerts:
         if a.status == "OPEN":
@@ -188,24 +290,37 @@ def get_executive_summary_report(
         "has_data": True,
         "records_count": total_records,
         "generated_at": datetime.datetime.utcnow(),
-        "data_sources": ["[DATABASE]", "[YOLO MODEL]", "[IMPORTED PDF]"],
+        "data_sources": ["[DATABASE]", "[YOLO VISION]", "[COMPLIANCE DOCS]", "[INSURANCE ADJUDICATIONS]"],
         "disclaimers": STANDARD_DISCLAIMERS,
         "metrics": {
-            "executive_health_summary": executive_health_summary,
+            "overall_risk_score": overall_risk_score,
+            "risk_tier": risk_tier,
+            "score_status": score_status,
+            "score_explanation": score_explanation,
+            "safety_risk": safety_risk,
+            "compliance_risk": compliance_risk,
+            "insurance_risk": insurance_risk,
             "safety_score": safety_score,
             "ppe_compliance_rate": ppe_compliance_rate,
             "site_risk_score": site_risk_score,
             "regulatory_compliance_rate": regulatory_compliance_rate,
             "insurance_exposure_score": insurance_exposure_score,
             "open_critical_alerts": open_critical_alerts,
+            "open_violations": open_violations,
             "overdue_inspections": overdue_inspections,
+            "human_review_items": human_review_items,
             "total_violations": len(violations),
             "total_alerts": len(alerts),
             "total_documents": len(docs),
             "total_evaluations": len(evals),
+            "top_hazards": top_hazards,
+            "high_risk_zones": high_risk_zones[:5],
+            "repeated_violations": repeated_violations[:5],
+            "top_recommendations": top_recommendations[:5],
             "unresolved_actions": unresolved_actions[:10]
         }
     }
+
 
 
 def get_site_risk_report(
@@ -857,3 +972,172 @@ def generate_html_export(report_data: Dict[str, Any]) -> str:
 </body>
 </html>
 """
+
+
+# =====================================================================
+# Milestone 4 Enhancement: Risk Decision Timeline
+# =====================================================================
+
+def get_risk_decision_timeline(
+    db: Session,
+    project_id: str,
+    from_date: Optional[datetime.datetime] = None,
+    to_date: Optional[datetime.datetime] = None,
+    limit: int = 50
+) -> List[Dict[str, Any]]:
+    """
+    Consolidates real chronological decision events across all existing agents & modules:
+    - SafetyAgent (PPE Violations & Alerts)
+    - ComplianceEngine (Evaluations & Inspection Schedules)
+    - InsuranceEngine (Exposure Assessments & Claim Adjudications)
+    - ReportingAgent (Audit Logs)
+    Sorts events newest first. Returns empty list [] if no records exist.
+    """
+    events: List[Dict[str, Any]] = []
+
+    # 1. PPE Violations from SafetyAgent
+    try:
+        v_query = db.query(models.PPEViolation).filter(models.PPEViolation.project_id == project_id)
+        if from_date:
+            v_query = v_query.filter(models.PPEViolation.detected_at >= from_date)
+        if to_date:
+            v_query = v_query.filter(models.PPEViolation.detected_at <= to_date)
+        violations = v_query.all()
+        for v in violations:
+            is_compliant = v.violation_type == "compliant" or v.decision_status == "compliant"
+            events.append({
+                "event_id": f"EV-PPE-{v.violation_id[:8]}",
+                "event_type": "PPE_COMPLIANCE_CHECK" if is_compliant else "PPE_VIOLATION",
+                "timestamp": v.detected_at or datetime.datetime.utcnow(),
+                "severity": "LOW" if is_compliant else (v.risk_category or "HIGH"),
+                "title": "Worker PPE Verification: Compliant" if is_compliant else f"PPE Violation: {v.violation_type.replace('_', ' ').title()}",
+                "description": f"Zone: {v.zone_name} • Risk Score: {v.final_risk_score} • Worker: {v.anonymous_worker_id}",
+                "source_agent": "SafetyAgent (YOLO Vision)",
+                "status": v.status or "OPEN",
+                "reference_id": v.violation_id
+            })
+    except Exception as e:
+        print(f"[Timeline] PPE violations extraction error: {e}")
+
+    # 2. Safety Alerts from SafetyAgent
+    try:
+        a_query = db.query(models.SafetyAlert).filter(models.SafetyAlert.project_id == project_id)
+        if from_date:
+            a_query = a_query.filter(models.SafetyAlert.created_at >= from_date)
+        if to_date:
+            a_query = a_query.filter(models.SafetyAlert.created_at <= to_date)
+        alerts = a_query.all()
+        for a in alerts:
+            events.append({
+                "event_id": f"EV-ALT-{a.alert_id[:8]}",
+                "event_type": "SAFETY_ALERT",
+                "timestamp": a.created_at or datetime.datetime.utcnow(),
+                "severity": a.severity or "HIGH",
+                "title": f"Safety Alert: {a.title}",
+                "description": a.message[:140] if a.message else "Automated safety threshold alert dispatched.",
+                "source_agent": "SafetyAgent (Alert Dispatcher)",
+                "status": a.status or "OPEN",
+                "reference_id": a.alert_id
+            })
+    except Exception as e:
+        print(f"[Timeline] Safety alerts extraction error: {e}")
+
+    # 3. Compliance Evaluations from ComplianceEngine
+    try:
+        e_query = db.query(models.ComplianceEvaluation).filter(models.ComplianceEvaluation.project_id == project_id)
+        if from_date:
+            e_query = e_query.filter(models.ComplianceEvaluation.evaluated_at >= from_date)
+        if to_date:
+            e_query = e_query.filter(models.ComplianceEvaluation.evaluated_at <= to_date)
+        evals = e_query.all()
+        for ev in evals:
+            sev = "HIGH" if ev.status in ["non_compliant", "missing_evidence"] else ("LOW" if ev.status == "compliant" else "MEDIUM")
+            events.append({
+                "event_id": f"EV-CMP-{ev.evaluation_id[:8]}",
+                "event_type": "COMPLIANCE_EVALUATION",
+                "timestamp": ev.evaluated_at or datetime.datetime.utcnow(),
+                "severity": sev,
+                "title": f"Regulatory Audit: {ev.status.replace('_', ' ').title()}",
+                "description": f"{ev.status_label or 'Regulatory clause evaluated'} (Citation: Page {ev.evidence_page or 1})",
+                "source_agent": "ComplianceEngine (OSHA/BOCW)",
+                "status": ev.status,
+                "reference_id": ev.evaluation_id
+            })
+    except Exception as e:
+        print(f"[Timeline] Compliance evaluations extraction error: {e}")
+
+    # 4. Inspection Schedules from ComplianceEngine
+    try:
+        s_query = db.query(models.InspectionSchedule).filter(models.InspectionSchedule.project_id == project_id)
+        if from_date:
+            s_query = s_query.filter(models.InspectionSchedule.due_date >= from_date)
+        if to_date:
+            s_query = s_query.filter(models.InspectionSchedule.due_date <= to_date)
+        schedules = s_query.all()
+        for s in schedules:
+            sev = "CRITICAL" if s.status == "OVERDUE" else ("HIGH" if s.status == "DUE_SOON" else "LOW")
+            events.append({
+                "event_id": f"EV-SCH-{s.schedule_id[:8]}",
+                "event_type": "INSPECTION_SCHEDULE",
+                "timestamp": s.due_date or datetime.datetime.utcnow(),
+                "severity": sev,
+                "title": f"Inspection Milestone: {s.item_title}",
+                "description": f"Category: {s.category} • Inspector: {s.assigned_inspector} • Status: {s.status}",
+                "source_agent": "ComplianceEngine (Scheduler)",
+                "status": s.status,
+                "reference_id": s.schedule_id
+            })
+    except Exception as e:
+        print(f"[Timeline] Inspection schedules extraction error: {e}")
+
+    # 5. Insurance Assessments from InsuranceEngine
+    try:
+        i_query = db.query(models.InsuranceAssessment).filter(models.InsuranceAssessment.project_id == project_id)
+        if from_date:
+            i_query = i_query.filter(models.InsuranceAssessment.created_at >= from_date)
+        if to_date:
+            i_query = i_query.filter(models.InsuranceAssessment.created_at <= to_date)
+        assessments = i_query.all()
+        for ia in assessments:
+            sev = ia.incident_severity or ("CRITICAL" if ia.claim_risk_tier == "CATASTROPHIC" else ("HIGH" if ia.claim_risk_tier == "HIGH" else "MEDIUM"))
+            events.append({
+                "event_id": f"EV-INS-{ia.assessment_id[:8]}",
+                "event_type": "INSURANCE_ASSESSMENT",
+                "timestamp": ia.created_at or datetime.datetime.utcnow(),
+                "severity": sev,
+                "title": f"Insurance Exposure: {ia.claim_risk_tier} Tier",
+                "description": f"Exposure Score: {ia.exposure_score}/100 • Completeness: {ia.evidence_completeness}% • Decision: {ia.decision_status}",
+                "source_agent": "InsuranceEngine (Actuarial)",
+                "status": ia.decision_status,
+                "reference_id": ia.assessment_id
+            })
+    except Exception as e:
+        print(f"[Timeline] Insurance assessments extraction error: {e}")
+
+    # 6. Report Audit Logs from ReportingAgent
+    try:
+        r_query = db.query(models.ReportAuditLog).filter(models.ReportAuditLog.project_id == project_id)
+        if from_date:
+            r_query = r_query.filter(models.ReportAuditLog.generated_at >= from_date)
+        if to_date:
+            r_query = r_query.filter(models.ReportAuditLog.generated_at <= to_date)
+        audit_logs = r_query.all()
+        for log in audit_logs:
+            events.append({
+                "event_id": f"EV-AUD-{log.log_id[:8]}",
+                "event_type": "REPORT_AUDIT",
+                "timestamp": log.generated_at or datetime.datetime.utcnow(),
+                "severity": "INFO",
+                "title": f"Report Audit: {log.report_type.replace('_', ' ').title()} ({log.export_format.upper()})",
+                "description": f"Generated for {log.user_role} role",
+                "source_agent": "ReportingAgent",
+                "status": "LOGGED",
+                "reference_id": log.log_id
+            })
+    except Exception as e:
+        print(f"[Timeline] Report audit extraction error: {e}")
+
+    # Sort newest first
+    events.sort(key=lambda x: x["timestamp"], reverse=True)
+    return events[:limit]
+

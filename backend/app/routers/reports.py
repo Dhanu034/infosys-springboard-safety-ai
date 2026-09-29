@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app import models
-from app.schemas_reports import ReportCommonEnvelope, ReportAuditLogResponse
+from app.schemas_reports import ReportCommonEnvelope, ReportAuditLogResponse, TimelineEventResponse
 from app.services import reporting_engine
 
 router = APIRouter(
@@ -158,3 +158,17 @@ def get_report_audit_logs(
         q = q.filter(models.ReportAuditLog.project_id == project_id)
     logs = q.order_by(models.ReportAuditLog.generated_at.desc()).limit(limit).all()
     return logs
+
+
+@router.get("/timeline", response_model=List[TimelineEventResponse])
+def get_risk_decision_timeline_events(
+    project_id: str = Query("PRJ-101", description="Project identifier (e.g., PRJ-101, PRJ-102, PRJ-103)"),
+    from_date: Optional[str] = Query(None, description="ISO or YYYY-MM-DD start filter"),
+    to_date: Optional[str] = Query(None, description="ISO or YYYY-MM-DD end filter"),
+    limit: int = Query(50, ge=1, le=100, description="Max timeline events to return"),
+    db: Session = Depends(get_db)
+):
+    dt_from = parse_iso_datetime(from_date)
+    dt_to = parse_iso_datetime(to_date)
+    return reporting_engine.get_risk_decision_timeline(db, project_id, dt_from, dt_to, limit)
+

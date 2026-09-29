@@ -26,3 +26,18 @@ class ReportAuditLogResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class TimelineEventResponse(BaseModel):
+    event_id: str
+    event_type: str
+    timestamp: datetime
+    severity: str
+    title: str
+    description: str
+    source_agent: str
+    status: str
+    reference_id: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
