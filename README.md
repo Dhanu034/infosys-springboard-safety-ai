@@ -19,17 +19,10 @@ Construction sites are high-risk, dynamic environments where traditional manual 
 
 ---
 
-## 👥 Team A & Engineering Roles
-
-| Name | Role | Core Engineering Contributions |
-| :--- | :--- | :--- |
-| **Dhanusri S** | **Team Lead & Full-Stack AI Engineer** | Overall System Architecture, Spatial Association, Multi-Agent Orchestration & Unified Risk Synthesis |
-| **Kaviya K** | **AI/ML Vision & Repository Lead** | YOLOv8 Model Fine-Tuning, Dataset Curation (5000+ images), OpenCV Video Pipeline & GitHub Repository Lead |
-| **Aman Kumar Rai** | **Backend & Systems Architect** | Asynchronous FastAPI REST Gateway, SQLite ORM Persistence, Zone Hazard Multipliers & n8n Dispatcher |
-| **Gourav Das** | **Compliance & OCR Specialist** | Offline Regulatory Engine (OSHA 1926 & BOCW 1996), pypdf/OCR Parser & Citation Gap Analysis |
-| **Syed Sameer** | **Frontend & UI/UX Telemetry Engineer** | React 18 + Vite 5 Glassmorphic UI Dashboard, Recharts Visual Telemetry, Video HUD Player & Multi-Format Exports |
-
-🔗 **Team Repository:** [Agentic-AI-for-Safety-Monitoring-with-Construction-Risk-Analytics-Team-A](https://github.com/kaviyakrishnamoorthy17/Agentic-AI-for-Safety-Monitoring-with-Construction-Risk-Analytics-Team-A)
+## 👩‍💻 Author & Developer
+- **Developer:** Dhanusri S (Reg No: `711524BCS034`)
+- **Program:** Infosys Springboard Internship Project 2026
+- **Subjects:** Modern Web Programming (MWP) & Deep Neural Networks (DNN)
 
 ---
 
@@ -243,4 +236,4 @@ npm run dev
 
 ---
 
-© 2026 BuildSure AI Team (Team A). Developed for Infosys Springboard Internship Program.
+© 2026 BuildSure AI — Dhanusri S. Developed for Infosys Springboard Internship Program.
