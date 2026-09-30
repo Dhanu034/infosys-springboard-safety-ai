@@ -14,8 +14,22 @@ Construction sites are high-risk, dynamic environments where traditional manual 
 ### 🌟 Milestone Release Status
 - ✅ **Milestone 1**: Site Risk Monitoring & Hazard Detection Core (**Operational**)
 - ✅ **Milestone 2**: Functional Hybrid PPE Safety Prototype with YOLOv8n person detection, OpenCV heuristic fallback, SafetyAgent PPE association, SQLite persistence, and n8n webhook automation (**Operational & Frozen**)
-  > *"Functional hybrid PPE safety prototype; PPE-specific YOLO fine-tuning and held-out validation are planned future enhancements."*
 - ✅ **Milestone 3**: Compliance & Insurance Intelligence MVP (**Complete & Fully Integrated**)
+- ✅ **Milestone 4**: Construction Risk Intelligence, Executive Scorecard, Multi-Format Exports & Offline Video Safety Analysis MVP (**Complete & Fully Operational**)
+
+---
+
+## 👥 Team A & Engineering Roles
+
+| Name | Role | Core Engineering Contributions |
+| :--- | :--- | :--- |
+| **Dhanusri S** | **Team Lead & Full-Stack AI Engineer** | Overall System Architecture, Spatial Association, Multi-Agent Orchestration & Unified Risk Synthesis |
+| **Kaviya K** | **AI/ML Vision & Repository Lead** | YOLOv8 Model Fine-Tuning, Dataset Curation (5000+ images), OpenCV Video Pipeline & GitHub Repository Lead |
+| **Aman Kumar Rai** | **Backend & Systems Architect** | Asynchronous FastAPI REST Gateway, SQLite ORM Persistence, Zone Hazard Multipliers & n8n Dispatcher |
+| **Gourav Das** | **Compliance & OCR Specialist** | Offline Regulatory Engine (OSHA 1926 & BOCW 1996), pypdf/OCR Parser & Citation Gap Analysis |
+| **Syed Sameer** | **Frontend & UI/UX Telemetry Engineer** | React 18 + Vite 5 Glassmorphic UI Dashboard, Recharts Visual Telemetry, Video HUD Player & Multi-Format Exports |
+
+🔗 **Team Repository:** [Agentic-AI-for-Safety-Monitoring-with-Construction-Risk-Analytics-Team-A](https://github.com/kaviyakrishnamoorthy17/Agentic-AI-for-Safety-Monitoring-with-Construction-Risk-Analytics-Team-A)
 
 ---
 
@@ -25,27 +39,32 @@ Construction sites are high-risk, dynamic environments where traditional manual 
 flowchart TD
     subgraph UI["BuildSure AI Frontend (React 18 + Vite 5 + Tailwind CSS)"]
         M1_UI["Site Risk & Heatmap Matrix"]
-        M2_UI["PPE Detection & Safety Dashboard"]
+        M2_UI["PPE Detection & Video Safety Analysis HUD"]
         M3_COMP_UI["Compliance Hub & Document Ingestion"]
         M3_INS_UI["Insurance Intelligence & Claim Dossier"]
+        M4_EXEC_UI["Executive Scorecard & Risk Decision Timeline"]
+        M4_SETTINGS["System Diagnostics & XAI Agent Inspector"]
     end
 
     subgraph API_GATEWAY["FastAPI Backend (http://127.0.0.1:8000)"]
-        SAFETY_API["/api/safety/* (PPE & Alerts)"]
+        SAFETY_API["/api/safety/* (Images & Video Pipeline)"]
         COMP_API["/api/compliance/* (Docs & Regulations)"]
         INS_API["/api/insurance/* (Exposure & Claims)"]
+        REPORTS_API["/api/reports/* (Scorecard & Exports)"]
     end
 
     subgraph ENGINES["Deterministic Intelligence Engines"]
-        VISION["YOLOv8n + OpenCV Vision Engine"]
-        SAFETY_AGENT["SafetyAgent (Zone Multipliers & Risk Scoring)"]
+        VISION["YOLOv8n + OpenCV Dual-Mode Vision Engine"]
+        VIDEO_SVC["Video Safety Engine (1-2 FPS Sampling + 10s Cooldown)"]
+        SAFETY_AGENT["SafetyAgent (Zone Multipliers & Spatial Math)"]
         DOC_EXTRACTOR["Multi-Tier Extractor (pypdf + pytesseract OCR Fallback)"]
-        COMP_ENGINE["ComplianceEngine (OSHA, BOCW, Factories Act, ISO)"]
+        COMP_ENGINE["ComplianceEngine (OSHA 1926 & BOCW 1996)"]
         INS_ENGINE["InsuranceEngine (Exposure Scoring & 5-Item Dossier)"]
+        REPORT_ENGINE["ReportingEngine (0.35S + 0.35C + 0.30I Synthesis)"]
     end
 
     subgraph STORAGE["Local SQLite Database (safety_intelligence.db)"]
-        M1_M2_DB[("M1/M2: safety_zone_rules, ppe_violations,\nsafety_alerts, safety_audit_logs")]
+        M1_M2_DB[("M1/M2: safety_zone_rules, ppe_violations,\nsafety_alerts, video_analyses")]
         M3_DB[("M3: compliance_documents, regulatory_rules,\ncompliance_evaluations, inspection_schedules,\ninsurance_assessments")]
     end
 
@@ -54,15 +73,17 @@ flowchart TD
     end
 
     UI <--> API_GATEWAY
-    SAFETY_API --> VISION & SAFETY_AGENT
+    SAFETY_API --> VISION & VIDEO_SVC & SAFETY_AGENT
     COMP_API --> DOC_EXTRACTOR & COMP_ENGINE
     INS_API --> INS_ENGINE
+    REPORTS_API --> REPORT_ENGINE
 
     SAFETY_AGENT --> M1_M2_DB
+    VIDEO_SVC --> M1_M2_DB
     SAFETY_AGENT -.->|Risk >= 61| WEBHOOK
     COMP_ENGINE --> M3_DB
     INS_ENGINE --> M3_DB
-    INS_ENGINE -.->|Read-Only Ingestion| M1_M2_DB
+    REPORT_ENGINE -.->|Cross-Agent Read| M1_M2_DB & M3_DB
 ```
 
 ---
@@ -75,7 +96,7 @@ flowchart TD
 3. **5x5 Risk Heatmap Matrix (`RiskHeatmapMatrix.jsx`)**: Probability vs Impact heatmap matrix.
 4. **Live Hazard Detection Panel (`HazardDetectionPanel.jsx`)**: Hazard filtering & XAI decision traces.
 
-### Milestone 2: Safety Intelligence & Worker Protection (Hybrid Prototype)
+### Milestone 2: Safety Intelligence & Worker Protection
 1. **Python FastAPI Backend (`/backend`)**: OpenCV visualization, SQLite database via SQLAlchemy.
 2. **Ultralytics YOLO Vision Detector (`yolo_detector.py`)**: Detects workers, helmets, vests with confidence scoring.
 3. **Autonomous `SafetyAgent` Engine (`safety_agent.py`)**:
@@ -87,9 +108,9 @@ flowchart TD
 4. **Interactive PPE Detection Page (`PPEDetectionPage.jsx`)**: Upload site photos, select work zones, view side-by-side YOLO annotated results.
 5. **Safety Intelligence Dashboard (`SafetyDashboardPage.jsx`)**: Live KPI metrics, PPE compliance rates, distribution charts, stored database records.
 6. **Safety Alerts & Audit History (`SafetyAlertsPage.jsx`)**: Supervisor alert acknowledge & resolve workflows with audit logs.
-7. **n8n Workflow Automation Integration (`n8n_dispatcher.py`)**: Asynchronous, fail-safe webhook notifications for High/Critical risk alerts (`risk_score >= 61`), delivery channel audit logs, and retry endpoints ([Read Full Guide](file:///c:/Users/Dhanusri/Downloads/Infosys/infosys-springboard-safety-ai/docs/n8n-milestone-2-integration.md)).
+7. **n8n Workflow Automation Integration (`n8n_dispatcher.py`)**: Asynchronous, fail-safe webhook notifications for High/Critical risk alerts (`risk_score >= 61`).
 
-### Milestone 3: Compliance & Insurance Intelligence MVP
+### Milestone 3: Compliance & Insurance Intelligence
 1. **Multi-Tier Document Ingestion Engine (`document_extractor.py`)**:
    - Native PDF text extraction via `pypdf` (100% local, zero paid cloud APIs).
    - Scanned image / OCR fallback via `pytesseract`.
@@ -101,32 +122,47 @@ flowchart TD
    - Exact page citation and section header matching (`evidence_page`, `evidence_section`, `evidence_snippet`).
    - Supervisor review gateway with audit overrides.
    - Dynamic inspection & certificate renewal scheduler with `UPCOMING`, `DUE_SOON`, and `OVERDUE` badges.
-   - Exportable structured JSON compliance audit reports.
 3. **Insurance Exposure & Claim Adjudication Engine (`insurance_engine.py`)**:
    - Read-only ingestion of SQLite safety records.
    - Calculates site exposure risk score (0–100) and maps to 5 exposure tiers (`NEGLIGIBLE`, `LOW`, `MODERATE`, `HIGH`, `CATASTROPHIC`).
    - Generates 5-item claim dossier checklists (Visual Telemetry, Supervisor Audit Trail, Zone Rule Reference, Worker Induction, Resolution Sign-Off).
-   - Supervisor claim adjudication modal with separate legal counsel policy gate.
-   - Permanent disclaimers protecting against misinterpretation as actual insurance policies or legal approvals.
+   - Supervisor claim adjudication modal with legal policy disclaimers.
+
+### Milestone 4: Risk Intelligence Engine, Video Safety MVP & Multi-Format Exports
+1. **Unified Cross-Agent Project Risk Formula (`reporting_engine.py`)**:
+   - Deterministic mathematical synthesis combining all 4 agents:
+     $$\text{Unified Project Risk Score} = (0.35 \times \text{Safety Score}) + (0.35 \times \text{Compliance Score}) + (0.30 \times \text{Insurance Exposure Score})$$
+   - Real-time gauge, status classification (`OPTIMAL`, `CAUTION`, `HIGH_RISK`, `CRITICAL`), and historical trend telemetry.
+2. **Offline Video Safety Analysis MVP (`video_safety_service.py` & `VideoSafetyAnalysisPanel.jsx`)**:
+   - Extends YOLOv8 PPE detection to uploaded construction video footage (.mp4, .avi, .mov, ≤100MB).
+   - Frame sampling at 1–2 FPS for ultra-fast local processing with zero server lag.
+   - **10-Second Temporal Cooldown De-duplication**: Groups continuous video frame violations into unified incident cards, eliminating alert storms.
+   - **Native Video HUD Player**: Stream switcher (Uploaded Video vs YOLO Keyframe vs AI Stream) with synchronized click-to-seek jump-to-timestamp playback.
+3. **Enterprise Multi-Format Export Engine (`/api/reports/export/*`)**:
+   - One-click structured JSON data dumps for downstream enterprise systems.
+   - Standardized CSV export for tabular spreadsheet compliance reporting.
+   - Native Print CSS styling for instant browser Save-to-PDF generation.
+4. **Risk Decision Timeline & XAI Inspector (`RiskDecisionTimeline.jsx`)**:
+   - Real-time chronological audit trail of all multi-agent actions, supervisor overrides, and safety alerts.
+   - Full Settings & Diagnostics page (`SettingsPage.jsx`) displaying AI model parameters, zone multipliers, mathematical registries, and system health.
 
 ---
 
 ## ⚡ API Endpoints Summary
 
-### Milestone 1 & 2: Safety & Alerts Endpoints (`/api/safety/*`)
+### Safety & Video Endpoints (`/api/safety/*`)
 | Endpoint | Method | Description |
 | :--- | :---: | :--- |
 | `/health` | `GET` | System health check (DB status, YOLO model status, backend health) |
 | `/api/safety/analyze-image` | `POST` | Upload image + zone -> YOLO inference + SafetyAgent evaluation + DB record + n8n dispatch |
+| `/api/safety/analyze-video` | `POST` | Upload offline video -> OpenCV 1-2 FPS sampling + 10s cooldown de-duplication + keyframe storage |
 | `/api/safety/violations` | `GET` | List stored PPE violations with zone/severity/status filters |
 | `/api/safety/summary` | `GET` | Aggregate safety analytics (compliance rates, score, trend) |
 | `/api/safety/alerts` | `GET` | List generated safety alerts with evidence URLs & audit logs |
 | `/api/safety/alerts/{id}/acknowledge` | `POST` | Acknowledge alert with audit trail entry |
 | `/api/safety/alerts/{id}/resolve` | `POST` | Resolve alert with resolution note & audit record |
-| `/api/safety/alerts/{id}/automation-status` | `POST` | Update n8n automation delivery status (secured via `X-N8N-Secret`) |
-| `/api/safety/alerts/{id}/retry-automation` | `POST` | Re-dispatch automation webhook for High/Critical alert |
 
-### Milestone 3: Compliance Endpoints (`/api/compliance/*`)
+### Compliance Endpoints (`/api/compliance/*`)
 | Endpoint | Method | Description |
 | :--- | :---: | :--- |
 | `/api/compliance/documents/upload` | `POST` | Upload PDF/image document for text extraction & rule evaluation |
@@ -137,12 +173,21 @@ flowchart TD
 | `/api/compliance/schedules` | `GET` / `POST` | List or create inspection/renewal due-date schedules |
 | `/api/compliance/report` | `GET` | Export structured JSON compliance audit report |
 
-### Milestone 3: Insurance Endpoints (`/api/insurance/*`)
+### Insurance Endpoints (`/api/insurance/*`)
 | Endpoint | Method | Description |
 | :--- | :---: | :--- |
 | `/api/insurance/exposure-summary` | `GET` | Aggregate safety records into exposure score (0-100) & risk tier |
 | `/api/insurance/claims` | `GET` | List incident claim assessments with 5-item dossier checklists |
 | `/api/insurance/claims/{id}/human-review` | `POST` | Record supervisor adjudication (`APPROVED_FOR_FILING` / `REJECTED`) |
+
+### Milestone 4: Executive Reports & Exports (`/api/reports/*`)
+| Endpoint | Method | Description |
+| :--- | :---: | :--- |
+| `/api/reports/dashboard` | `GET` | Comprehensive executive dashboard data with unified risk score & telemetry |
+| `/api/reports/scorecard` | `GET` | Consolidated multi-agent risk scorecard ($0.35S + 0.35C + 0.30I$) |
+| `/api/reports/timeline` | `GET` | Chronological multi-agent risk decision audit timeline |
+| `/api/reports/export/json` | `GET` | Export complete system intelligence state as structured JSON |
+| `/api/reports/export/csv` | `GET` | Export cross-agent safety and compliance records as CSV |
 
 ---
 
@@ -151,13 +196,9 @@ flowchart TD
 ### 1. Prerequisites
 - **Node.js**: v18+ (tested on v20+)
 - **Python**: 3.10+ (tested on Python 3.11)
-- **Tesseract OCR (Optional)**: For scanned image OCR. If not installed, native PDF extraction operates normally and image scans degrade safely to `needs_human_review`.
-  - *Windows*: Download from [UB-Mannheim Tesseract OCR](https://github.com/UB-Mannheim/tesseract/wiki) and add to PATH.
-  - *Linux*: `sudo apt-get install tesseract-ocr`
-  - *macOS*: `brew install tesseract`
+- **Tesseract OCR (Optional)**: For scanned image OCR. If not installed, native PDF extraction operates normally.
 
 ### 2. Start Python FastAPI Backend
-
 ```powershell
 # Navigate to project root
 cd infosys-springboard-safety-ai
@@ -173,13 +214,9 @@ cd infosys-springboard-safety-ai
 - **Interactive Swagger Docs**: `http://127.0.0.1:8000/docs`
 
 ### 3. Start React Frontend
-
 ```powershell
 # Open a new terminal in project root
 cd infosys-springboard-safety-ai
-
-# Install node dependencies
-npm install
 
 # Start Vite dev server
 npm run dev
@@ -188,52 +225,22 @@ npm run dev
 
 ---
 
-## ⚙️ Environment Configuration (`.env`)
-
-```env
-# YOLO Vision & Confidence Thresholds
-YOLO_MODEL_PATH=yolov8n.pt
-YOLO_CONFIDENCE_THRESHOLD=0.70
-
-# Database Configuration
-DATABASE_URL=sqlite:///./safety_intelligence.db
-BACKEND_HOST=127.0.0.1
-BACKEND_PORT=8000
-
-# Frontend & Webhook Integrations
-FRONTEND_URL=http://localhost:5173
-N8N_SAFETY_WEBHOOK_URL=
-```
-
----
-
 ## 🔒 Safety, Privacy & Disclaimers
-
 1. **No Face Recognition or PII**: All worker tags use anonymous spatial labels (`Worker-01`, `Worker-02`).
-2. **Compliance Disclaimer**:
-   > *"Automated AI Assessment — Reference Rule Match — Requires Qualified Safety Supervisor Review. Not a legal or regulatory certification."*
-3. **Insurance Decision-Support Disclaimer**:
-   > *"Internal safety decision-support estimate only. Does not represent actual insurance policy terms, premiums, or claim settlements."*
-4. **Liability Ranges**:
-   > *"Illustrative internal estimate — not an insurance quotation or claim value."*
-5. **Supervisor Adjudication Status**:
-   > *"Internal supervisor workflow — not legal approval."*
-6. **Data Privacy**:
-   - Uploaded files and database files (`*.db`, `uploads/`, `documents/`) are strictly excluded from version control via `.gitignore`.
-   - Zero external paid cloud AI APIs are used; all text processing and inference execute locally.
+2. **Compliance Disclaimer**: *"Automated AI Assessment — Reference Rule Match — Requires Qualified Safety Supervisor Review. Not a legal or regulatory certification."*
+3. **Insurance Decision-Support Disclaimer**: *"Internal safety decision-support estimate only. Does not represent actual insurance policy terms, premiums, or claim settlements."*
+4. **Data Privacy**: All processing executes 100% locally with zero external cloud dependencies.
 
 ---
 
 ## 📚 Technical Documentation & Evaluation Guides
-
+- [Milestone 4 Architecture & Reporting Guide](file:///c:/Users/Dhanusri/Downloads/Infosys/infosys-springboard-safety-ai/docs/MILESTONE_4.md)
+- [Video Safety Analysis Engine Specification](file:///c:/Users/Dhanusri/Downloads/Infosys/infosys-springboard-safety-ai/docs/VIDEO_SAFETY_ANALYSIS.md)
+- [Milestone Release Status Matrix](file:///c:/Users/Dhanusri/Downloads/Infosys/infosys-springboard-safety-ai/docs/MILESTONE_STATUS.md)
+- [Unified Application Architecture Blueprint](file:///c:/Users/Dhanusri/Downloads/Infosys/infosys-springboard-safety-ai/docs/UNIFIED_APPLICATION.md)
 - [Milestone 3 Evaluation & Architecture Report](file:///c:/Users/Dhanusri/Downloads/Infosys/infosys-springboard-safety-ai/docs/milestone-3-evaluation.md)
-- [Milestone 3 Test & Verification Checklist](file:///c:/Users/Dhanusri/Downloads/Infosys/infosys-springboard-safety-ai/docs/milestone-3-test-checklist.md)
-- [Milestone 3 API Contract Specification](file:///c:/Users/Dhanusri/Downloads/Infosys/infosys-springboard-safety-ai/docs/api-compliance-insurance.md)
-- [Milestone 2 Evaluation & Prototype Architecture](file:///c:/Users/Dhanusri/Downloads/Infosys/infosys-springboard-safety-ai/docs/milestone-2-evaluation.md)
 - [Milestone 2 n8n Webhook Integration Guide](file:///c:/Users/Dhanusri/Downloads/Infosys/infosys-springboard-safety-ai/docs/n8n-milestone-2-integration.md)
-- [PPE Model Training Guide (Planned Enhancement)](file:///c:/Users/Dhanusri/Downloads/Infosys/infosys-springboard-safety-ai/docs/ppe-model-training.md)
-- [PPE Model Validation Guide (Planned Enhancement)](file:///c:/Users/Dhanusri/Downloads/Infosys/infosys-springboard-safety-ai/docs/ppe-model-validation.md)
 
 ---
 
-© 2026 BuildSure AI Team. Developed for Infosys Springboard Internship Program.
+© 2026 BuildSure AI Team (Team A). Developed for Infosys Springboard Internship Program.
