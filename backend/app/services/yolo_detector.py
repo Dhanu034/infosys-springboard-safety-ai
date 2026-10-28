@@ -204,7 +204,8 @@ class YOLODetector:
         # =====================================================================
         if self.ultralytics_model is not None:
             try:
-                imgsz = 1024 if max(w0, h0) >= 1000 else 640
+                # Fast standard 640px inference for real-time < 1s response on CPU
+                imgsz = 640
                 results = self.ultralytics_model(
                     image_path,
                     conf=conf_to_use,

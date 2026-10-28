@@ -122,18 +122,21 @@ class ComplianceEngineService:
         found_keywords = []
 
         for page_num, page_content in sorted(pages_dict.items()):
+            page_lower = page_content.lower()
+            sentences = None
             for kw in keywords:
-                if re.search(r'\b' + re.escape(kw) + r'\b', page_content, re.IGNORECASE):
-                    found_keywords.append(kw)
-                    matched_page = page_num
-                    # Extract snippet sentence
-                    sentences = re.split(r'(?<=[.!?])\s+|\n{2,}', page_content)
-                    for sent in sentences:
-                        if re.search(r'\b' + re.escape(kw) + r'\b', sent, re.IGNORECASE):
-                            matched_sentence = sent.strip().replace('\n', ' ')
+                if kw.lower() in page_lower:
+                    if re.search(r'\b' + re.escape(kw) + r'\b', page_content, re.IGNORECASE):
+                        found_keywords.append(kw)
+                        matched_page = page_num
+                        if sentences is None:
+                            sentences = [s.strip().replace('\n', ' ') for s in re.split(r'(?<=[.!?])\s+|\n{2,}', page_content) if s.strip()]
+                        for sent in sentences:
+                            if re.search(r'\b' + re.escape(kw) + r'\b', sent, re.IGNORECASE):
+                                matched_sentence = sent
+                                break
+                        if matched_sentence:
                             break
-                    if matched_sentence:
-                        break
             if matched_sentence:
                 break
 

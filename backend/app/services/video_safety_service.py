@@ -144,121 +144,125 @@ class VideoSafetyService:
 
         temp_frame_paths_to_clean: List[str] = []
 
+        # Adaptive frame budget: sample up to 6 key representative frames across video duration for 2-3s response
+        MAX_SAMPLE_FRAMES = 6
+        if total_frames > MAX_SAMPLE_FRAMES:
+            sample_frame_indices = [int(i * (total_frames - 1) / (MAX_SAMPLE_FRAMES - 1)) for i in range(MAX_SAMPLE_FRAMES)]
+        else:
+            sample_frame_indices = list(range(0, max(1, total_frames), max(1, step)))
+
         try:
-            frame_idx = 0
-            while True:
+            for frame_idx in sample_frame_indices:
+                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
                 ret, frame = cap.read()
                 if not ret or frame is None:
-                    break
+                    continue
 
-                if frame_idx % step == 0:
-                    total_sampled_frames += 1
-                    current_time_sec = round(frame_idx / fps, 2)
+                total_sampled_frames += 1
+                current_time_sec = round(frame_idx / fps, 2)
 
-                    # Save temporary frame image for YOLO detection
-                    temp_frame_name = f"temp_{file_id}_f{frame_idx}_{timestamp_str}.jpg"
-                    temp_frame_path = os.path.join(settings.UPLOAD_DIR, temp_frame_name)
-                    cv2.imwrite(temp_frame_path, frame)
-                    temp_frame_paths_to_clean.append(temp_frame_path)
+                # Save temporary frame image for YOLO detection
+                temp_frame_name = f"temp_{file_id}_f{frame_idx}_{timestamp_str}.jpg"
+                temp_frame_path = os.path.join(settings.UPLOAD_DIR, temp_frame_name)
+                cv2.imwrite(temp_frame_path, frame)
+                temp_frame_paths_to_clean.append(temp_frame_path)
 
-                    # 1. Run YOLO inference on sampled frame
-                    detections = yolo_detector.detect_objects(temp_frame_path)
+                # 1. Run YOLO inference on sampled frame
+                detections = yolo_detector.detect_objects(temp_frame_path)
 
-                    # 2. Run SafetyAgent rule & PPE association
-                    agent_result = safety_agent.analyze_detections(
-                        detections=detections,
-                        zone_name=zone_name,
-                        project_id=project_id
-                    )
+                # 2. Run SafetyAgent rule & PPE association
+                agent_result = safety_agent.analyze_detections(
+                    detections=detections,
+                    zone_name=zone_name,
+                    project_id=project_id
+                )
 
-                    workers = agent_result.get("workers_compliance", [])
-                    violations = agent_result.get("violations", [])
-                    total_workers = agent_result.get("total_workers", 0)
-                    peak_persons_in_frame = max(peak_persons_in_frame, total_workers)
+                workers = agent_result.get("workers_compliance", [])
+                violations = agent_result.get("violations", [])
+                total_workers = agent_result.get("total_workers", 0)
+                peak_persons_in_frame = max(peak_persons_in_frame, total_workers)
 
-                    # 3. Generate annotated keyframe image
-                    keyframe_filename = f"keyframe_{file_id}_f{frame_idx}.jpg"
-                    keyframe_saved_path = yolo_detector.generate_annotated_image(
-                        temp_frame_path,
-                        workers,
-                        keyframe_filename
-                    )
-                    keyframe_url = f"/results/{keyframe_filename}" if keyframe_saved_path else None
+                # 3. Generate annotated keyframe image
+                keyframe_filename = f"keyframe_{file_id}_f{frame_idx}.jpg"
+                keyframe_saved_path = yolo_detector.generate_annotated_image(
+                    temp_frame_path,
+                    workers,
+                    keyframe_filename
+                )
+                keyframe_url = f"/results/{keyframe_filename}" if keyframe_saved_path else None
 
-                    # If annotated image exists, load back for video builder
-                    if keyframe_saved_path and os.path.exists(keyframe_saved_path):
-                        ann_img = cv2.imread(keyframe_saved_path)
-                        if ann_img is not None:
-                            annotated_frames_for_video.append(ann_img)
-                    else:
-                        annotated_frames_for_video.append(frame)
+                # If annotated image exists, load back for video builder
+                if keyframe_saved_path and os.path.exists(keyframe_saved_path):
+                    ann_img = cv2.imread(keyframe_saved_path)
+                    if ann_img is not None:
+                        annotated_frames_for_video.append(ann_img)
+                else:
+                    annotated_frames_for_video.append(frame)
 
-                    # Save representative keyframes (keyframes with violations, or periodically up to 12 frames)
-                    if keyframe_url and (len(violations) > 0 or len(keyframe_evidence) < 4 or frame_idx % (step * 5) == 0):
-                        if len(keyframe_evidence) < 12:
-                            keyframe_evidence.append({
-                                "frame_number": frame_idx,
-                                "timestamp_seconds": current_time_sec,
-                                "image_url": keyframe_url,
-                                "persons_detected": total_workers,
-                                "violations_count": len(violations),
-                                "decision_status": "violation" if len(violations) > 0 else ("needs_human_review" if agent_result.get("human_review_required") else "compliant")
-                            })
+                # Save representative keyframes (keyframes with violations, or periodically up to 12 frames)
+                if keyframe_url and (len(violations) > 0 or len(keyframe_evidence) < 4 or frame_idx % (step * 5) == 0):
+                    if len(keyframe_evidence) < 12:
+                        keyframe_evidence.append({
+                            "frame_number": frame_idx,
+                            "timestamp_seconds": current_time_sec,
+                            "image_url": keyframe_url,
+                            "persons_detected": total_workers,
+                            "violations_count": len(violations),
+                            "decision_status": "violation" if len(violations) > 0 else ("needs_human_review" if agent_result.get("human_review_required") else "compliant")
+                        })
 
-                    # 4. Group repeated detections within Cooldown Interval
-                    frame_violation_types = set()
-                    for v in violations:
-                        v_type = v.get("violation_type", "unspecified_violation")
-                        frame_violation_types.add(v_type)
-                        group_key = (project_id, zone_name, v_type)
+                # 4. Group repeated detections within Cooldown Interval
+                frame_violation_types = set()
+                for v in violations:
+                    v_type = v.get("violation_type", "unspecified_violation")
+                    frame_violation_types.add(v_type)
+                    group_key = (project_id, zone_name, v_type)
 
-                        if group_key in active_incident_groups:
-                            inc = active_incident_groups[group_key]
-                            # Check cooldown
-                            if (current_time_sec - inc["end_timestamp_seconds"]) <= self.DEFAULT_COOLDOWN_SECONDS:
-                                # Extend existing grouped incident
-                                inc["end_timestamp_seconds"] = current_time_sec
-                                inc["end_frame"] = frame_idx
-                                inc["occurrences_count"] += 1
-                                inc["peak_risk_score"] = max(inc["peak_risk_score"], float(v.get("final_risk_score", 50.0)))
-                                inc["max_confidence"] = max(inc["max_confidence"], float(v.get("confidence_score", 0.90)))
-                                if v.get("decision_status") == "needs_human_review" or v.get("confidence_score", 1.0) < 0.45:
-                                    inc["needs_human_review"] = True
-                                if float(v.get("final_risk_score", 0)) >= inc["peak_risk_score"] and keyframe_url:
-                                    inc["evidence_frame_reference"] = keyframe_url
-                            else:
-                                # Cooldown exceeded: close previous group and start new one
-                                completed_grouped_incidents.append(inc)
-                                active_incident_groups[group_key] = self._create_incident_dict(
-                                    len(completed_grouped_incidents) + 1,
-                                    v_type,
-                                    current_time_sec,
-                                    frame_idx,
-                                    v,
-                                    keyframe_url
-                                )
+                    if group_key in active_incident_groups:
+                        inc = active_incident_groups[group_key]
+                        # Check cooldown
+                        if (current_time_sec - inc["end_timestamp_seconds"]) <= self.DEFAULT_COOLDOWN_SECONDS:
+                            # Extend existing grouped incident
+                            inc["end_timestamp_seconds"] = current_time_sec
+                            inc["end_frame"] = frame_idx
+                            inc["occurrences_count"] += 1
+                            inc["peak_risk_score"] = max(inc["peak_risk_score"], float(v.get("final_risk_score", 50.0)))
+                            inc["max_confidence"] = max(inc["max_confidence"], float(v.get("confidence_score", 0.90)))
+                            if v.get("decision_status") == "needs_human_review" or v.get("confidence_score", 1.0) < 0.45:
+                                inc["needs_human_review"] = True
+                            if float(v.get("final_risk_score", 0)) >= inc["peak_risk_score"] and keyframe_url:
+                                inc["evidence_frame_reference"] = keyframe_url
                         else:
-                            # Start new grouped incident
+                            # Cooldown exceeded: close previous group and start new one
+                            completed_grouped_incidents.append(inc)
                             active_incident_groups[group_key] = self._create_incident_dict(
-                                len(completed_grouped_incidents) + len(active_incident_groups) + 1,
+                                len(completed_grouped_incidents) + 1,
                                 v_type,
                                 current_time_sec,
                                 frame_idx,
                                 v,
                                 keyframe_url
                             )
+                    else:
+                        # Start new grouped incident
+                        active_incident_groups[group_key] = self._create_incident_dict(
+                            len(completed_grouped_incidents) + len(active_incident_groups) + 1,
+                            v_type,
+                            current_time_sec,
+                            frame_idx,
+                            v,
+                            keyframe_url
+                        )
 
-                    # Check for expired groups that were NOT observed in this frame
-                    expired_keys = []
-                    for g_key, inc in active_incident_groups.items():
-                        if g_key[2] not in frame_violation_types:
-                            if (current_time_sec - inc["end_timestamp_seconds"]) > self.DEFAULT_COOLDOWN_SECONDS:
-                                completed_grouped_incidents.append(inc)
-                                expired_keys.append(g_key)
-                    for k in expired_keys:
-                        del active_incident_groups[k]
-
-                frame_idx += 1
+                # Check for expired groups that were NOT observed in this frame
+                expired_keys = []
+                for g_key, inc in active_incident_groups.items():
+                    if g_key[2] not in frame_violation_types:
+                        if (current_time_sec - inc["end_timestamp_seconds"]) > self.DEFAULT_COOLDOWN_SECONDS:
+                            completed_grouped_incidents.append(inc)
+                            expired_keys.append(g_key)
+                for k in expired_keys:
+                    del active_incident_groups[k]
 
             # Flush remaining active incident groups
             for inc in active_incident_groups.values():
